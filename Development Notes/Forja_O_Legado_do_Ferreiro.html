@@ -1156,81 +1156,87 @@ ART.build = function () {
 // PERSONAGENS 16x24 (4 direções x 4 quadros)
 // ---------------------------------------------------------------------------
 function drawChar(d, o, dir, f) {
+  // sprite 24x36 (1,5x o antigo): pés na linha 35, centro entre as colunas 11 e 12
   const sk = o.skin, hr = o.hair, tp = o.top, lg = o.legs || PAL.leather.slice(1, 3), bt = o.boots || [PAL.wood[1], PAL.wood[2]];
   const bob = f === 1 || f === 3 ? 1 : 0, step = f === 1 ? 1 : f === 3 ? -1 : 0;
   const side = dir === 'right';
-  // pernas
+  // pernas e botas
   if (!side) {
-    const ll = step > 0 ? 1 : 0, rl = step < 0 ? 1 : 0;
-    d.r(5, 17, 3, 5 - ll, lg[1]); d.vl(5, 17, 5 - ll, lg[0] === lg[1] ? lg[0] : lg[1]); d.r(8, 17, 3, 5 - rl, lg[0]);
-    d.r(5, 21 - ll, 3, 2, bt[1]); d.r(8, 21 - rl, 3, 2, bt[0]); d.hl(5, 21 - ll, 3, bt[1]);
-  } else {
-    if (step) { d.r(4, 17, 3, 4, lg[0]); d.r(3, 20, 3, 2, bt[0]); d.r(9, 17, 3, 4, lg[1]); d.r(10, 20, 4, 2, bt[1]); }
-    else { d.r(6, 17, 4, 5, lg[1]); d.vl(6, 17, 5, lg[0]); d.r(6, 21, 5, 2, bt[1]); }
-  }
+    const ll = step > 0 ? 2 : 0, rl = step < 0 ? 2 : 0;
+    d.r(8, 27, 4, 6 - ll, lg[1]); d.vl(8, 27, 6 - ll, lg[0] === lg[1] ? lg[0] : PAL.ink); d.r(12, 27, 4, 6 - rl, lg[0]);
+    d.r(8, 33 - ll, 4, 3, bt[1]); d.hl(8, 33 - ll, 4, bt[0]); d.r(12, 33 - rl, 4, 3, bt[0]); d.hl(12, 35 - rl, 4, PAL.ink);
+  } else if (step) {
+    d.r(6, 27, 4, 5, lg[0]); d.r(5, 32, 5, 3, bt[0]); d.r(14, 27, 4, 5, lg[1]); d.r(15, 32, 6, 3, bt[1]); d.hl(15, 32, 6, bt[0]);
+  } else { d.r(10, 27, 5, 6, lg[1]); d.vl(10, 27, 6, lg[0]); d.r(10, 33, 7, 3, bt[1]); d.hl(10, 33, 7, bt[0]); }
   const y0 = bob ? 1 : 0;
   // capa atrás
-  if (o.cape && dir !== 'up') { d.r(side ? 3 : 3, 11 + y0, side ? 4 : 10, 9, o.cape[0]); }
+  if (o.cape && dir !== 'up') d.r(side ? 4 : 5, 17 + y0, side ? 6 : 14, 13, o.cape[0]);
   // tronco
-  const tx = side ? 5 : 4, tw = side ? 6 : 8;
-  d.r(tx, 11 + y0, tw, 7, tp[1]); d.vl(tx, 11 + y0, 7, tp[2]); d.vl(tx + tw - 1, 11 + y0, 7, tp[0]); d.hl(tx, 11 + y0, tw, tp[2]);
-  if (o.long) { d.r(tx, 17 + y0, tw, 3, tp[1]); d.vl(tx + tw - 1, 17 + y0, 3, tp[0]); d.hl(tx, 19 + y0, tw, tp[0]); }
-  if (o.apron && dir !== 'up') { d.r(tx + 1, 13 + y0, tw - 2, 7, o.apron[1]); d.vl(tx + 1, 13 + y0, 7, o.apron[2]); d.hl(tx + 1, 19 + y0, tw - 2, o.apron[0]); }
-  if (o.apron && dir === 'up') { d.line(5, 11 + y0, 10, 16 + y0, o.apron[0]); d.line(10, 11 + y0, 5, 16 + y0, o.apron[0]); }
-  if (o.belt) d.hl(tx, 16 + y0, tw, o.belt);
-  if (o.trim && dir !== 'up') { d.vl(side ? 9 : 7, 11 + y0, 6, o.trim); }
-  if (o.tabard && dir !== 'up') { d.r(side ? 6 : 5, 12 + y0, side ? 4 : 6, 7, o.tabard[1]); d.vl(side ? 6 : 5, 12 + y0, 7, o.tabard[2]); if (!side) { d.r(7, 14 + y0, 2, 1, PAL.gold[4]); d.r(7, 13 + y0, 1, 3, PAL.gold[4]); } }
-  if (o.pack && dir !== 'down') { d.r(side ? 2 : 4, 11 + y0, side ? 4 : 8, 7, PAL.leather[2]); d.hl(side ? 2 : 4, 11 + y0, side ? 4 : 8, PAL.leather[3]); }
-  // braços
+  const tx = side ? 8 : 6, tw = side ? 9 : 12;
+  d.r(tx, 16 + y0, tw, 11, tp[1]); d.vl(tx, 16 + y0, 11, tp[2]); d.vl(tx + tw - 1, 16 + y0, 11, tp[0]); d.hl(tx, 16 + y0, tw, tp[2]);
+  if (dir === 'down') { d.r(10, 16 + y0, 4, 2, sk[0]); d.hl(11, 18 + y0, 2, sk[0]); }
+  if (o.long) { d.r(tx, 25 + y0, tw, 5, tp[1]); d.vl(tx + tw - 1, 25 + y0, 5, tp[0]); d.hl(tx, 29 + y0, tw, tp[0]); }
+  if (o.apron && dir !== 'up') { d.vl(tx + 2, 16 + y0, 3, o.apron[0]); d.vl(tx + tw - 3, 16 + y0, 3, o.apron[0]); d.r(tx + 2, 19 + y0, tw - 4, 10, o.apron[1]); d.vl(tx + 2, 19 + y0, 10, o.apron[2]); d.hl(tx + 2, 28 + y0, tw - 4, o.apron[0]); if (!side) d.r(10, 22 + y0, 4, 2, o.apron[0]); }
+  if (o.apron && dir === 'up') { d.line(7, 16 + y0, 16, 25 + y0, o.apron[0]); d.line(16, 16 + y0, 7, 25 + y0, o.apron[0]); }
+  if (o.belt) { d.hl(tx, 24 + y0, tw, o.belt); if (dir === 'down') d.r(11, 24 + y0, 2, 1, PAL.gold[3]); }
+  if (o.trim && dir !== 'up') d.vl(side ? 13 : 11, 17 + y0, 8, o.trim);
+  if (o.tabard && dir !== 'up') { d.r(side ? 9 : 8, 18 + y0, side ? 6 : 8, 10, o.tabard[1]); d.vl(side ? 9 : 8, 18 + y0, 10, o.tabard[2]); if (!side) { d.r(11, 19 + y0, 2, 6, PAL.gold[4]); d.r(9, 21 + y0, 6, 2, PAL.gold[4]); } }
+  if (o.pack && dir !== 'down') { d.r(side ? 3 : 7, 17 + y0, side ? 6 : 10, 10, PAL.leather[2]); d.hl(side ? 3 : 7, 17 + y0, side ? 6 : 10, PAL.leather[3]); d.hl(side ? 3 : 7, 21 + y0, side ? 6 : 10, PAL.leather[1]); }
+  // braços e mãos
   const sw = step;
   if (!side) {
-    d.r(3, 11 + y0 + (sw > 0 ? 1 : 0), 1, 5, tp[1]); d.r(12, 11 + y0 + (sw < 0 ? 1 : 0), 1, 5, tp[0]);
-    if (dir === 'down') { d.p(3, 16 + y0 + (sw > 0 ? 1 : 0), sk[1]); d.p(12, 16 + y0 + (sw < 0 ? 1 : 0), sk[0]); }
-  } else { d.r(7 + sw, 12 + y0, 2, 5, tp[0]); d.r(7 + sw, 17 + y0, 2, 1, sk[1]); }
+    const a1 = 17 + y0 + (sw > 0 ? 1 : 0), a2 = 17 + y0 + (sw < 0 ? 1 : 0);
+    d.r(4, a1, 2, 8, tp[1]); d.vl(4, a1, 8, tp[2]); d.r(18, a2, 2, 8, tp[0]);
+    d.r(4, a1 + 8, 2, 2, sk[1]); d.r(18, a2 + 8, 2, 2, sk[0]);
+  } else { d.r(11 + sw, 17 + y0, 3, 7, tp[0]); d.vl(11 + sw, 17 + y0, 7, tp[1]); d.r(11 + sw, 24 + y0, 3, 2, sk[1]); }
   // cabeça
-  const hy = 2 + y0;
+  const hy = 4 + y0, lng = o.hairStyle === 'long', bald = o.hairStyle === 'bald';
   if (dir === 'down') {
-    d.r(5, hy + 2, 6, 7, sk[1]); d.vl(10, hy + 2, 7, sk[0]); d.hl(5, hy + 8, 6, sk[0]); d.vl(5, hy + 3, 4, sk[2]);
-    d.p(6, hy + 5, PAL.ink); d.p(9, hy + 5, PAL.ink); d.p(7, hy + 6, sk[0]);
-    if (o.beard) { d.r(5, hy + 6, 6, 4, o.beard); d.p(7, hy + 6, sk[1]); d.p(8, hy + 6, sk[1]); }
-    if (o.hairStyle !== 'bald') { d.r(4, hy, 8, 3, hr[1]); d.hl(5, hy, 6, hr[2]); d.r(4, hy + 2, 1, o.hairStyle === 'long' ? 9 : 4, hr[1]); d.r(11, hy + 2, 1, o.hairStyle === 'long' ? 9 : 4, hr[0]); }
-    else { d.hl(5, hy + 1, 6, sk[1]); d.hl(6, hy + 1, 3, sk[2]); d.r(4, hy + 3, 1, 3, hr[1]); d.r(11, hy + 3, 1, 3, hr[0]); }
+    d.r(8, hy + 3, 8, 9, sk[1]); d.vl(15, hy + 3, 9, sk[0]); d.vl(8, hy + 4, 6, sk[2]); d.hl(9, hy + 11, 6, sk[0]);
+    d.p(7, hy + 7, sk[1]); d.p(16, hy + 7, sk[0]);
+    d.r(9, hy + 7, 2, 2, '#f2ead8'); d.r(13, hy + 7, 2, 2, '#f2ead8'); d.r(10, hy + 7, 1, 2, PAL.ink); d.r(13, hy + 7, 1, 2, PAL.ink);
+    d.hl(9, hy + 6, 2, hr[0]); d.hl(13, hy + 6, 2, hr[0]); d.r(11, hy + 9, 2, 1, sk[0]); d.hl(11, hy + 10, 2, PAL.red[2]);
+    if (o.beard) { d.r(8, hy + 9, 8, 5, o.beard); d.r(9, hy + 9, 6, 1, sk[1]); d.r(11, hy + 9, 2, 1, sk[0]); d.hl(11, hy + 11, 2, PAL.red[1]); d.vl(15, hy + 10, 4, PAL.ink); }
+    if (!bald) { d.r(7, hy, 10, 4, hr[1]); d.hl(8, hy, 8, hr[2]); d.hl(9, hy + 1, 3, hr[2]); d.r(8, hy + 3, 3, 1, hr[1]); d.r(14, hy + 3, 2, 1, hr[0]); d.r(7, hy + 3, 1, lng ? 13 : 6, hr[1]); d.r(16, hy + 3, 1, lng ? 13 : 6, hr[0]); if (lng) { d.r(6, hy + 6, 1, 10, hr[1]); d.r(17, hy + 6, 1, 10, hr[0]); } }
+    else { d.r(8, hy + 1, 8, 2, sk[1]); d.hl(9, hy, 6, sk[1]); d.r(10, hy + 1, 3, 1, sk[2]); d.r(7, hy + 5, 1, 4, hr[1]); d.r(16, hy + 5, 1, 4, hr[0]); }
   } else if (dir === 'up') {
-    d.r(5, hy + 2, 6, 7, sk[0]); d.r(4, hy, 8, o.hairStyle === 'bald' ? 4 : 8, hr[1]); d.hl(5, hy, 6, hr[2]); d.vl(11, hy + 1, 6, hr[0]);
-    if (o.hairStyle === 'bald') d.r(5, hy, 6, 3, sk[1]);
-    if (o.hairStyle === 'long') d.r(4, hy + 7, 8, 4, hr[1]);
-    if (o.beard) d.r(5, hy + 8, 6, 1, o.beard);
+    d.r(8, hy + 3, 8, 9, sk[0]); d.p(7, hy + 7, sk[0]); d.p(16, hy + 7, sk[0]);
+    if (bald) { d.r(8, hy, 8, 5, sk[1]); d.r(10, hy + 1, 3, 1, sk[2]); d.r(7, hy + 5, 10, 4, hr[1]); }
+    else { d.r(7, hy, 10, 12, hr[1]); d.hl(8, hy, 8, hr[2]); d.r(9, hy + 1, 4, 1, hr[2]); d.vl(16, hy + 1, 11, hr[0]); }
+    if (lng) d.r(7, hy + 11, 10, 6, hr[1]);
+    if (o.beard) d.r(8, hy + 12, 8, 1, o.beard);
   } else {
-    d.r(5, hy + 2, 6, 7, sk[1]); d.vl(5, hy + 2, 7, sk[0]); d.p(11, hy + 5, sk[1]); d.hl(6, hy + 8, 5, sk[0]);
-    d.p(9, hy + 5, PAL.ink);
-    if (o.beard) { d.r(7, hy + 6, 4, 4, o.beard); }
-    if (o.hairStyle !== 'bald') { d.r(4, hy, 7, 3, hr[1]); d.hl(5, hy, 5, hr[2]); d.r(4, hy + 2, 3, o.hairStyle === 'long' ? 9 : 5, hr[1]); d.vl(4, hy + 2, 5, hr[0]); }
-    else { d.r(5, hy + 1, 5, 1, sk[1]); d.r(5, hy + 3, 2, 3, hr[1]); }
+    d.r(8, hy + 3, 8, 9, sk[1]); d.vl(8, hy + 3, 9, sk[0]); d.p(16, hy + 8, sk[1]); d.hl(9, hy + 11, 7, sk[0]);
+    d.r(13, hy + 7, 2, 2, '#f2ead8'); d.r(14, hy + 7, 1, 2, PAL.ink); d.hl(13, hy + 6, 2, hr[0]); d.p(15, hy + 10, PAL.red[2]);
+    if (o.beard) d.r(11, hy + 9, 6, 5, o.beard);
+    if (!bald) { d.r(7, hy, 10, 4, hr[1]); d.hl(8, hy, 8, hr[2]); d.r(7, hy + 3, 5, lng ? 13 : 7, hr[1]); d.vl(7, hy + 3, lng ? 13 : 7, hr[0]); d.r(13, hy + 3, 3, 1, hr[1]); }
+    else { d.r(8, hy + 1, 8, 2, sk[1]); d.hl(9, hy, 6, sk[1]); d.r(8, hy + 5, 3, 4, hr[1]); }
+    d.r(10, hy + 6, 2, 3, sk[1]); d.p(10, hy + 7, sk[0]);
   }
   // chapéus
   const h = o.hat;
-  if (h === 'straw') { d.r(1, hy + 2, 14, 2, PAL.parch[3]); d.hl(1, hy + 2, 14, PAL.parch[4]); d.r(4, hy - 1, 8, 3, PAL.parch[3]); d.hl(4, hy - 1, 8, PAL.parch[4]); d.hl(4, hy + 1, 8, PAL.red[3]); }
-  if (h === 'helmet') { d.r(4, hy - 1, 8, 4, PAL.iron[4]); d.hl(4, hy - 1, 8, PAL.iron[5]); d.hl(3, hy + 3, 10, PAL.iron[3]); if (dir === 'down') d.r(7, hy + 3, 2, 3, PAL.iron[4]); }
-  if (h === 'miner') { d.r(4, hy - 1, 8, 4, PAL.gold[2]); d.hl(4, hy - 1, 8, PAL.gold[3]); d.hl(3, hy + 3, 10, PAL.gold[1]); if (dir !== 'up') { const lx = dir === 'down' ? 7 : 10; d.r(lx, hy, 2, 2, PAL.fire[5]); } }
-  if (h === 'hood') { const c = o.cape || PAL.green.slice(1); d.r(3, hy - 1, 10, 5, c[1]); d.hl(4, hy - 1, 8, c[2]); if (dir === 'up') d.r(3, hy + 3, 10, 7, c[1]); else if (dir === 'down') { d.r(3, hy + 3, 2, 7, c[1]); d.r(11, hy + 3, 2, 7, c[0]); } else d.r(3, hy + 3, 4, 7, c[1]); }
-  if (h === 'feather') { d.r(2, hy + 1, 12, 2, o.hatc || PAL.purple[2]); d.r(4, hy - 2, 8, 3, o.hatc || PAL.purple[2]); d.hl(4, hy - 2, 8, PAL.purple[3]); d.line(11, hy - 2, 14, hy - 5, PAL.red[4]); d.line(12, hy - 2, 15, hy - 4, PAL.red[3]); d.hl(4, hy, 8, PAL.gold[3]); }
-  if (h === 'kasa') { d.poly([[0, hy + 3], [16, hy + 3], [8, hy - 3]], PAL.parch[2]); d.hl(1, hy + 3, 14, PAL.parch[1]); d.line(8, hy - 3, 2, hy + 2, PAL.parch[3]); }
-  if (h === 'scarf') { d.r(4, hy - 1, 8, 4, PAL.teal[2]); d.hl(4, hy - 1, 8, PAL.teal[3]); d.r(11, hy + 2, 2, 4, PAL.teal[1]); }
-  // arma nas costas (katana)
-  if (o.katana) { if (dir === 'up') d.line(3, 20, 12, 9, PAL.iron[4]); else if (dir === 'down') { d.r(12, 8 + y0, 2, 3, PAL.ink); d.p(13, 7 + y0, PAL.gold[3]); } else d.line(3, 9 + y0, 5, 7 + y0, PAL.ink); }
-  if (o.cane && dir !== 'up') { d.vl(side ? 12 : 13, 12 + y0, 11, PAL.wood[3]); d.p(side ? 12 : 13, 12 + y0, PAL.wood[5]); }
+  if (h === 'straw') { d.r(2, hy + 3, 20, 3, PAL.parch[3]); d.hl(2, hy + 3, 20, PAL.parch[4]); d.hl(2, hy + 5, 20, PAL.parch[1]); d.r(7, hy - 2, 10, 5, PAL.parch[3]); d.hl(7, hy - 2, 10, PAL.parch[4]); d.hl(7, hy + 2, 10, PAL.red[3]); }
+  if (h === 'helmet') { d.r(7, hy - 2, 10, 6, PAL.iron[4]); d.hl(7, hy - 2, 10, PAL.iron[5]); d.vl(16, hy - 1, 5, PAL.iron[3]); d.r(6, hy + 4, 12, 2, PAL.iron[3]); d.hl(6, hy + 4, 12, PAL.iron[5]); if (dir === 'down') d.r(11, hy + 5, 2, 5, PAL.iron[4]); }
+  if (h === 'miner') { d.r(7, hy - 2, 10, 6, PAL.gold[2]); d.hl(7, hy - 2, 10, PAL.gold[3]); d.r(6, hy + 4, 12, 1, PAL.gold[1]); if (dir !== 'up') { const lx = dir === 'down' ? 11 : 15; d.r(lx, hy, 2, 3, PAL.fire[5]); } }
+  if (h === 'hood') { const c = o.cape || PAL.green.slice(1); d.r(6, hy - 2, 12, 7, c[1]); d.hl(7, hy - 2, 10, c[2]); if (dir === 'up') d.r(6, hy + 4, 12, 11, c[1]); else if (dir === 'down') { d.r(6, hy + 4, 2, 11, c[1]); d.r(16, hy + 4, 2, 11, c[0]); } else d.r(6, hy + 4, 5, 11, c[1]); }
+  if (h === 'feather') { const hc = o.hatc || PAL.purple[2]; d.r(4, hy + 2, 16, 3, hc); d.r(7, hy - 3, 10, 5, hc); d.hl(7, hy - 3, 10, PAL.purple[3]); d.hl(7, hy + 1, 10, PAL.gold[3]); d.line(16, hy - 3, 21, hy - 8, PAL.red[4]); d.line(17, hy - 3, 22, hy - 7, PAL.red[3]); }
+  if (h === 'kasa') { d.poly([[0, hy + 5], [24, hy + 5], [12, hy - 4]], PAL.parch[2]); d.hl(1, hy + 5, 22, PAL.parch[1]); d.line(12, hy - 4, 3, hy + 4, PAL.parch[3]); d.line(12, hy - 4, 18, hy + 4, PAL.parch[1]); }
+  if (h === 'scarf') { d.r(7, hy - 1, 10, 5, PAL.teal[2]); d.hl(7, hy - 1, 10, PAL.teal[3]); d.r(16, hy + 3, 3, 6, PAL.teal[1]); }
+  // arma nas costas (katana) e bengala
+  if (o.katana) { if (dir === 'up') { d.line(5, 30, 18, 13, PAL.iron[4]); d.line(6, 30, 19, 13, PAL.iron[2]); } else if (dir === 'down') { d.r(18, 11 + y0, 2, 5, PAL.ink); d.p(19, 10 + y0, PAL.gold[3]); } else d.line(5, 13 + y0, 8, 10 + y0, PAL.ink); }
+  if (o.cane && dir !== 'up') { d.vl(side ? 18 : 20, 17 + y0, 18, PAL.wood[3]); d.p(side ? 18 : 20, 17 + y0, PAL.wood[5]); }
 }
 const charCache = new Map();
 function charSprites(key, o) {
   if (charCache.has(key)) return charCache.get(key);
   const out = {};
-  ['down', 'up', 'right'].forEach(dir => { out[dir] = [0, 1, 2, 3].map(f => spr(16, 24, d => drawChar(d, o, dir, f))); });
+  ['down', 'up', 'right'].forEach(dir => { out[dir] = [0, 1, 2, 3].map(f => spr(24, 36, d => drawChar(d, o, dir, f))); });
   out.left = out.right.map(flipH);
   charCache.set(key, out); return out;
 }
 function portrait(o) {
-  const c = canvasOf(18, 16), g = c.getContext('2d'), s = spr(16, 24, d => drawChar(d, o, 'down', 0));
-  g.drawImage(s, 0, -2); return c;
+  const c = canvasOf(26, 23), g = c.getContext('2d'), s = spr(24, 36, d => drawChar(d, o, 'down', 0));
+  g.drawImage(s, 0, 0); return c;
 }
 
 'use strict';
@@ -2091,7 +2097,7 @@ function lighting(lights, dark) {
   lights.forEach(([x, y, r, a, warm]) => { if (!warm) return; const gr = g.createRadialGradient(x, y, 0, x, y, r * 0.8); gr.addColorStop(0, 'rgba(255,130,40,' + warm + ')'); gr.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); });
   g.globalCompositeOperation = 'source-over';
 }
-function drawActor(c, sprites) { const s = sprites[c.dir][c.f]; g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(Math.round(c.x) - 6, Math.round(c.y) - 1, 12, 2); g.fillRect(Math.round(c.x) - 4, Math.round(c.y), 8, 1); blit(g, s, c.x - 8, c.y - 23); }
+function drawActor(c, sprites) { const s = sprites[c.dir][c.f]; g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(Math.round(c.x) - 8, Math.round(c.y) - 1, 16, 2); g.fillRect(Math.round(c.x) - 6, Math.round(c.y) + 1, 12, 1); blit(g, s, c.x - 12, c.y - 35); }
 function bubble(x, y, iconName, col) {
   g.fillStyle = PAL.ink; g.fillRect(x - 8, y - 9, 17, 14); g.fillStyle = col || PAL.parch[4]; g.fillRect(x - 7, y - 8, 15, 12); g.fillStyle = PAL.ink; g.fillRect(x - 1, y + 5, 3, 2); g.fillStyle = col || PAL.parch[4]; g.fillRect(x, y + 4, 1, 2);
   const ic = icon(iconName); g.drawImage(ic, 0, 0, ic.width, ic.height, x - 6, y - 8, 12, 12);
@@ -2152,11 +2158,11 @@ function drawWorld(t, opt = {}) {
   customers.forEach(c => {
     if (c.state !== 'wait') return;
     const low = !c.npc && c.pat < c.maxPat * 0.3;
-    bubble(Math.round(c.x), Math.round(c.y) - 30, c.req.type === 'buy' ? 'moeda' : c.req.type === 'merchant' ? 'bau' : c.req.type === 'story' ? 'livro' : c.req.type === 'repair' ? 'forja' : 'pedidos', low && Math.floor(t * 4) % 2 ? PAL.red[4] : null);
-    if (!c.npc) { g.fillStyle = PAL.ink; g.fillRect(Math.round(c.x) - 7, Math.round(c.y) - 41, 15, 3); g.fillStyle = low ? PAL.red[4] : PAL.green[4]; g.fillRect(Math.round(c.x) - 6, Math.round(c.y) - 40, Math.round(13 * c.pat / c.maxPat), 1); }
+    bubble(Math.round(c.x), Math.round(c.y) - 42, c.req.type === 'buy' ? 'moeda' : c.req.type === 'merchant' ? 'bau' : c.req.type === 'story' ? 'livro' : c.req.type === 'repair' ? 'forja' : 'pedidos', low && Math.floor(t * 4) % 2 ? PAL.red[4] : null);
+    if (!c.npc) { g.fillStyle = PAL.ink; g.fillRect(Math.round(c.x) - 7, Math.round(c.y) - 53, 15, 3); g.fillStyle = low ? PAL.red[4] : PAL.green[4]; g.fillRect(Math.round(c.x) - 6, Math.round(c.y) - 52, Math.round(13 * c.pat / c.maxPat), 1); }
   });
   const z = nearZone();
-  if (z && !UI.blocking()) { const k = pxText('E', PAL.ink, null); g.fillStyle = PAL.parch[4]; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 36, 9, 10); g.fillStyle = PAL.ink; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 27, 9, 1); g.drawImage(k, Math.round(P.x) - 2, Math.round(P.y) - 36); }
+  if (z && !UI.blocking()) { const k = pxText('E', PAL.ink, null); g.fillStyle = PAL.parch[4]; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 48, 9, 10); g.fillStyle = PAL.ink; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 39, 9, 1); g.drawImage(k, Math.round(P.x) - 2, Math.round(P.y) - 48); }
   drawFloats();
 }
 
@@ -2267,7 +2273,7 @@ function drawMarc(t, opt) {
   if (S.wip && !UI.blocking()) { const z = zones().find(z => z.id === STEP[nextStep()].st) || zones().find(z => z.id === 'porta'); if (z && z.mk) arrow(z.mk[0], z.mk[1], t); }
   if (customers.some(c => c.state === 'wait')) { bubble(214, 60, 'cliente', Math.floor(t * 3) % 2 ? PAL.red[4] : null); }
   const z = nearZone();
-  if (z && !UI.blocking()) { const k = pxText('E', PAL.ink, null); g.fillStyle = PAL.parch[4]; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 36, 9, 10); g.fillStyle = PAL.ink; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 27, 9, 1); g.drawImage(k, Math.round(P.x) - 2, Math.round(P.y) - 36); }
+  if (z && !UI.blocking()) { const k = pxText('E', PAL.ink, null); g.fillStyle = PAL.parch[4]; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 48, 9, 10); g.fillStyle = PAL.ink; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 39, 9, 1); g.drawImage(k, Math.round(P.x) - 2, Math.round(P.y) - 48); }
   drawFloats();
 }
 
@@ -2295,7 +2301,7 @@ function updatePlayer(dt) {
 }
 function clickWorld(x, y) {
   if (mode !== 'play' || UI.blocking()) return;
-  const cu = room === 'forja' && customers.find(c => c.state === 'wait' && Math.abs(c.x - x) < 9 && y > c.y - 26 && y < c.y + 2);
+  const cu = room === 'forja' && customers.find(c => c.state === 'wait' && Math.abs(c.x - x) < 12 && y > c.y - 38 && y < c.y + 2);
   if (cu) { const zz = ZONES.find(z => z.id === 'balcao'); P.target = { x: clamp(cu.x, 250, 378), y: 122, z: zz, c: cu }; return; }
   const z = zones().find(z => (!z.need || has(z.need)) && x >= z.x - 6 && x <= z.x + z.w + 6 && y >= z.y - 40 && y <= z.y + z.h);
   if (z) { const tx = clamp(x, z.x + 4, z.x + z.w - 4), ty = z.y + z.h / 2; P.target = { x: tx, y: ty, z }; return; }
@@ -3672,7 +3678,7 @@ const UI = (() => {
   function setPortrait(look) {
     const pc = $('dlg-port'), x = pc.getContext('2d'); x.clearRect(0, 0, pc.width, pc.height);
     if (!look) { pc.classList.add('hidden'); return; } pc.classList.remove('hidden');
-    x.imageSmoothingEnabled = false; const p = portrait(look); x.drawImage(p, 0, 0, 18, 16, 0, 0, pc.width, pc.height);
+    x.imageSmoothingEnabled = false; const p = portrait(look); x.drawImage(p, 0, 0, p.width, p.height, 0, 0, pc.width, pc.height);
   }
   function dialog(lines, cb, cust) {
     dlg = { lines, i: 0, cb, cust, choice: null }; show('dialog'); step();
@@ -3852,7 +3858,7 @@ const UI = (() => {
       <button class="gold big" onclick="UI.h.begin()">Acender a forja</button><button class="big" onclick="UI.h.slots('new')">Voltar</button>`;
     const pc = $('cr-prev'), x = pc.getContext('2d'); x.imageSmoothingEnabled = false;
     const o = { skin: PAL.skin[newLook.skin], hair: PAL.hair[newLook.hair], hairStyle: newLook.style, top: ['#3a2a22', '#5a4334', '#7a5e48'], apron: PAL.leather.slice(1, 4), belt: PAL.leather[0], legs: ['#2a2230', '#3a3142'] };
-    x.drawImage(spr(16, 24, d => drawChar(d, o, 'down', 0)), 0, 0, 18, 26, 0, 0, 96 * 18 / 16, 144 * 26 / 24);
+    x.drawImage(spr(24, 36, d => drawChar(d, o, 'down', 0)), 0, 0, 26, 38, -4, -7, 104, 152);
   }
   h.look = (k, v) => { const nm = $('cr-name') ? $('cr-name').value : 'Ari'; newLook[k] = v; creator(); $('cr-name').value = nm; SND.fx.click(); };
   h.begin = () => {
