@@ -2320,12 +2320,16 @@ const MINI = (() => {
     for (let l = 0; l < 4; l++) if (pcs.includes(LANE_MIDI[l] % 12) && Math.abs(l - lane) < bd) { bd = Math.abs(l - lane); best = l; }
     return best;
   }
+  // dificuldade por material: bronze 1/5 … mithril 5/5 (fração de notas extras nos contratempos e multiplicador da janela de acerto)
+  const DIFF_TIER = { bronze: 0, ferro: 1, aco: 2, prata: 3, mithril: 4 }, DIFF_EXTRA = [0, 0, 0.25, 0.4, 0.55], DIFF_WIN = [1.2, 1, 0.9, 0.82, 0.75];
   const PREF = { TIC: 3, TA: 2, CLAM: 2, SHACK: 2, HA: 2, PAH: 1, TUM: 0, BUM: 0, DON: 0, FORJA: 3 };
   INIT.hammer = () => {
     s.step = 'hammer';
     const R = RECIPES[w.r], M = metal(), toks = R.pat.split(/\s+/).filter(Boolean), n = toks.length;
     const bpm = R.bpm + (w.m ? M.bpm : 0), beat = 60 / bpm, half = beat / 2, t0 = clock() + 0.6, lead = 4 * beat;
-    const T = h => t0 + lead + h * half, kinds = (R.loops || 1) >= 2 ? ['A', 'B', 'C'] : ['A', 'B'];
+    // quanto mais nobre o metal, mais difícil de trabalhar: mais seções, mais notas, janela de acerto menor
+    const tier = w.m ? (DIFF_TIER[w.m] ?? 1) : 1, extra = DIFF_EXTRA[tier];
+    const T = h => t0 + lead + h * half, kinds = (R.loops || 1) >= 2 || tier >= 2 ? ['A', 'B', 'C'] : ['A', 'B'];
     const hsh = (a, b) => { const x = Math.sin(a * 12.9898 + b * 78.233 + R.base * 0.37) * 43758.5453; return x - Math.floor(x); };
     s.notes = []; s.secs = [];
     let hp = 0, walk = 0;
@@ -2341,7 +2345,7 @@ const MINI = (() => {
         else {
           const r = hsh(i, rep * 7 + ki * 3);
           walk = clamp(walk + (r < 0.33 ? -1 : r > 0.66 ? 1 : 0), -1, 1);
-          lane = clamp((PREF[tk] ?? 1) + walk, 0, k === 'B' ? 2 : 3);
+          lane = clamp((PREF[tk] ?? 1) + walk, 0, k === 'B' && tier < 3 ? 2 : 3);
           if (rep === 1 && i >= n - 2) lane = 0;   // fim da frase repousa no grave
         }
         lane = conforma(lane, SND.chord(SND.FORGE_CH[k].split(' ')[Math.floor((rep * n + i) / 8) % 4]), i % 2 === 0);
@@ -2349,8 +2353,9 @@ const MINI = (() => {
           let rest = 0; while (rest < 3 && toks[i + 1 + rest] === '.') rest++;
           if (k !== 'A' && rest >= 2 && /BUM|DON|FORJA|HA|TUM/.test(tk)) { s.notes.push({ t: T(h), t2: T(h + rest), lane, syl: LANE[lane], kind: 'hold', st: 0 }); holdAte = h + rest; }
           else s.notes.push({ t: T(h), lane, syl: LANE[lane], kind: 'tap', st: 0 });
-        } else if (k !== 'A' && i % 4 === 3 && (k === 'C' || rep === 1)) s.notes.push({ t: T(h), syl: 'VIRA', kind: 'flip', st: 0 });
+        } else if (k !== 'A' && i % 4 === 3 && (k === 'C' || rep === 1 || tier >= 3)) s.notes.push({ t: T(h), syl: 'VIRA', kind: 'flip', st: 0 });
         else if (k === 'C' && rep === 1 && i % 4 === 1) s.notes.push({ t: T(h), lane: 3, syl: 'TIN', kind: 'tap', st: 0 });
+        else if ((k !== 'A' || tier >= 4) && i % 2 === 1 && hsh(i, rep * 5 + ki * 2 + 11) < extra) s.notes.push({ t: T(h), lane, syl: LANE[lane], kind: 'tap', st: 0 });
       }
       hp += 2 * n;
     });
@@ -2359,7 +2364,8 @@ const MINI = (() => {
     s.notes.push({ t: T(hp + 6), lane: 1, syl: 'HA', kind: 'tap', st: 0 });
     s.notes.push({ t: T(hp + 8), lane: 0, syl: 'BUM', kind: 'tap', st: 0 });
     const wm = (sk('m1') ? 1.15 : 1) * (has('bigorna') ? 1.2 : 1);
-    Object.assign(s, { t0, beat, lead, win: { p: 0.05 * (sk('m2') ? 1.4 : 1) * (has('bigorna') ? 1.15 : 1), g: 0.1 * wm, o: 0.15 * wm }, hit: 0, empty: 0, combo: 0, maxC: 0, sum: 0, strike: 0, flipA: 0, side: 1, th: 0.5, fever: false, fevN: 0, endT: s.notes[s.notes.length - 1].t + 0.8 });
+    const dw = DIFF_WIN[tier];
+    Object.assign(s, { tier, t0, beat, lead, win: { p: 0.05 * dw * (sk('m2') ? 1.4 : 1) * (has('bigorna') ? 1.15 : 1), g: 0.1 * wm * dw, o: 0.15 * wm * dw }, hit: 0, empty: 0, combo: 0, maxC: 0, sum: 0, strike: 0, flipA: 0, side: 1, th: 0.5, fever: false, fevN: 0, endT: s.notes[s.notes.length - 1].t + 0.8 });
     s.forge = null;
     if (useAudio) {
       SND.stopMusic(); SND.setDuck(1);
@@ -2504,6 +2510,7 @@ const MINI = (() => {
       }
     });
     // contagem, seção, sequência
+    if (now < s.t0 + s.lead) drawText(g, (w.m ? MATS[w.m].name.toUpperCase() : 'PEÇA') + ' - DIFICULDADE ' + (s.tier + 1) + '/5', 312, 132, ['#c8a060', '#d8d0c0', '#a8c8e8', '#e8e8f8', '#b8f0ff'][s.tier], 'center');
     if (now < s.t0 + s.lead) { const k = Math.floor((now - s.t0) / s.beat); drawText(g, k < 0 ? 'PREPARE-SE' : k < 3 ? String(3 - k) : 'CANTE!', 312, 156, PAL.gold[4], 'center'); }
     const sec = s.secs.slice().reverse().find(x => now >= x.t - 0.2);
     if (sec && now - sec.t < 2.2) { g.globalAlpha = clamp(1.6 - (now - sec.t) * 0.7, 0, 1); drawText(g, SEC_NAME[sec.k], 312, 144, PAL.gold[5], 'center'); g.globalAlpha = 1; }
