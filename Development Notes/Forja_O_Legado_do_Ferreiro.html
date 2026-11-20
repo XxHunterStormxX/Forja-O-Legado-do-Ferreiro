@@ -57,6 +57,29 @@ button.big small { display: block; font-size: .78rem; opacity: .8; }
 #hud-btns button span { white-space: nowrap; max-width: 64px; overflow: hidden; text-overflow: clip; }
 #hud-btns button:hover { background: #3a2516; border-color: var(--line); color: var(--text); }
 #hud-btns button.glow { animation: glow 1.2s infinite; }
+.stree-wrap { display: grid; grid-template-columns: 1fr 250px; gap: 12px; align-items: start; }
+.stree { position: relative; width: 100%; aspect-ratio: 640 / 500; background: radial-gradient(circle at 50% 50%, #3a210f 0%, #1a0f08 45%, #0d0805 100%); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stree svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stree .ring { fill: none; stroke: #3a2614; stroke-width: 1; stroke-dasharray: 2 5; }
+.stree .ln { stroke-width: 3; stroke-linecap: round; } .stree .ln.lock { stroke: #2e2016; } .stree .ln.next { stroke: #5a4128; stroke-dasharray: 4 5; }
+.stree .ln.can { stroke: #e0b050; stroke-dasharray: 7 5; animation: skflow 1s linear infinite; } .stree .ln.own { stroke: #f2c45a; filter: drop-shadow(0 0 3px #f2c45a); }
+.stree .ex { fill: none; stroke: #b0405a; stroke-width: 2; stroke-dasharray: 3 5; opacity: .8; }
+.stree .bl { fill: #c8a060; font: 700 13px var(--title); text-anchor: middle; letter-spacing: .03em; }
+@keyframes skflow { to { stroke-dashoffset: -24; } }
+.sn { position: absolute; transform: translate(-50%, -50%); width: 7.5%; aspect-ratio: 1; padding: 0 !important; min-width: 0 !important; border-radius: 50% !important; display: grid; place-items: center; background: #1a100a !important; border: 2px solid #4a3a2a !important; }
+.sn span { display: grid; place-items: center; width: 70%; } .sn img { width: 100%; height: auto; }
+.sn i { position: absolute; right: -7px; bottom: -6px; font: 700 .62rem var(--title); font-style: normal; background: #120b08; border: 1px solid #5a4128; border-radius: 8px; padding: 0 4px; color: var(--gold3); }
+.sn.cap { width: 8.8%; border-width: 3px !important; } .sn.root { width: 10.5%; border-width: 3px !important; }
+.sn.hyb { width: 6.4%; border-radius: 6px !important; transform: translate(-50%, -50%) rotate(45deg); } .sn.hyb span, .sn.hyb i { transform: rotate(-45deg); }
+.sn.own { border-color: var(--gold2) !important; background: radial-gradient(circle, #7a5220, #2a1a0a) !important; box-shadow: 0 0 12px #f2c45a99; }
+.sn.can { border-color: var(--gold) !important; animation: glow 1.6s infinite; }
+.sn.next { filter: grayscale(.7) brightness(.75); } .sn.lock { filter: grayscale(1) brightness(.45); } .sn.excl { filter: grayscale(1) brightness(.35); border-color: #7a2a3a !important; }
+.sn.sel { outline: 2px solid #fff3c0; outline-offset: 3px; }
+.sdet { background: #120b08; border: 1px solid var(--line); border-radius: 6px; padding: 12px; text-align: center; }
+.sdet h3 { margin: 4px 0 2px; color: var(--gold3); } .sdet .sd-t { color: var(--muted); font-size: .8rem; margin-bottom: 8px; } .sdet p { margin: 0 0 8px; }
+.sdet ul { list-style: none; padding: 0; margin: 0 0 8px; text-align: left; font-size: .86rem; } .sdet li.ok { color: #9ed07a; } .sdet li.no { color: #d07a6a; }
+.sdet .sd-ex { color: #d08aa0; font-size: .8rem; margin-bottom: 8px; } .sdet .sd-ok { color: var(--gold3); font-weight: 700; } .sdet .sd-no { color: var(--muted); }
+.sdet button { width: 100%; }
 @keyframes glow { 50% { background: rgba(242,196,90,.25); border-color: var(--gold2); } }
 #hud-goals { position: absolute; top: 78px; right: 10px; width: 250px; padding: 8px 10px; font-size: .86rem; }
 .lbl { font: 700 .82rem var(--title); color: var(--gold2); margin-bottom: 4px; letter-spacing: .02em; }
@@ -254,7 +277,7 @@ input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--gold); }
   #mh-hint { top: 50px; font-size: .85rem; }
   .book { grid-template-columns: 1fr; } .rlist { flex-direction: row; overflow-x: auto; max-height: none; }
   .rit { flex: none; }
-  .tree { grid-template-columns: repeat(2, 1fr); } .cols { grid-template-columns: 1fr; }
+  .tree { grid-template-columns: repeat(2, 1fr); } .stree-wrap { grid-template-columns: 1fr; } .cols { grid-template-columns: 1fr; }
   .asm { grid-template-columns: 1fr; }
   #dlg-port { width: 72px; height: 64px; }
 }
@@ -1305,6 +1328,35 @@ const SKILLS = [
     { id: 'f3', name: 'Chamado Lendário', desc: 'Chance de peça Lendária ×2,5.', ex: 'v3' }] },
 ];
 
+// Árvore em constelação: raiz no centro, 6 ramos em volta (3 níveis cada) e 6 talentos híbridos entre ramos vizinhos.
+const SKILL_ROOT = { id: 'raiz', name: 'Aprendiz da Forja', desc: 'Onde tudo começa. Todo caminho da forja parte daqui.', icon: 'arvore' };
+const SKILL_ORDER = ['m', 'c', 'r', 'a', 'v', 'f'];
+const SKILL_HYB = [
+  { id: 'h1', a: 'm', b: 'c', icon: 'musica', name: 'Ritmo do Fogo', desc: 'A Fúria da Forja acende com 6 acertos seguidos, em vez de 8.' },
+  { id: 'h2', a: 'c', b: 'r', icon: 'agua', name: 'Têmpera Viva', desc: 'Na fornalha, ventos, brasas e viradas aparecem 40% menos.' },
+  { id: 'h3', a: 'r', b: 'a', icon: 'rebolo', name: 'Olho de Ourives', desc: 'Os golpes de acabamento ficam 20% mais lentos.' },
+  { id: 'h4', a: 'a', b: 'v', icon: 'pedidos', name: 'Contrato Selado', desc: '+10% de reputação em tudo.' },
+  { id: 'h5', a: 'v', b: 'f', icon: 'rep', name: 'Lenda Viva', desc: 'Vendas e encomendas pagam mais 8%.' },
+  { id: 'h6', a: 'f', b: 'm', icon: 'martelo', name: 'Martelo Rúnico', desc: 'Metais nobres têm 30% menos notas extras na bigorna.' },
+];
+const TIER_ROM = ['I', 'II', 'III'], TIER_COST = [1, 1, 2], TIER_LVL = [1, 3, 6], TIER_RAD = [78, 140, 198];
+const SKILL_TREE = (() => {
+  const C = [320, 250], pos = (ang, r) => [Math.round(C[0] + Math.cos(ang) * r), Math.round(C[1] + Math.sin(ang) * r)], list = [];
+  list.push(Object.assign({ tier: 0, req: [], cost: 0, lvl: 1, xy: C, br: null }, SKILL_ROOT));
+  SKILL_ORDER.forEach((bid, k) => {
+    const br = SKILLS.find(b => b.id === bid), ang = (-90 + k * 60) * Math.PI / 180;
+    br.nodes.forEach((n, i) => list.push(Object.assign({}, n, { tier: i + 1, icon: br.icon, br, req: [i ? br.nodes[i - 1].id : 'raiz'], cost: TIER_COST[i], lvl: TIER_LVL[i], xy: pos(ang, TIER_RAD[i]), ang })));
+  });
+  SKILL_HYB.forEach(hy => {
+    const ka = SKILL_ORDER.indexOf(hy.a), ang = (-60 + ka * 60) * Math.PI / 180;
+    list.push(Object.assign({}, hy, { tier: 'h', req: [hy.a + '1', hy.b + '1'], cost: 2, lvl: 4, xy: pos(ang, 116), br: null }));
+  });
+  return list;
+})();
+const skNode = id => SKILL_TREE.find(n => n.id === id);
+const skHas = id => id === 'raiz' || sk(id);
+function skCan(n) { return !skHas(n.id) && n.req.every(skHas) && !(n.ex && sk(n.ex)) && S.sp >= n.cost && S.level >= n.lvl; }
+
 // ---------------- clientes ----------------
 const ARCH = {
   lavrador: { roles: ['Lavrador', 'Lavradora'], look: { hat: 'straw', top: PAL.green.slice(1, 4) }, wants: ['enxada', 'ferradura', 'pregos', 'picareta'], pay: 1, greet: ['Bom dia! A colheita não espera.', 'A terra anda dura este ano.', 'Meu vizinho jura que suas ferramentas não quebram.'] },
@@ -1491,8 +1543,8 @@ const has = u => !!S && S.upg.includes(u);
 const sk = id => !!S && S.skills.includes(id);
 const stageIdx = () => Math.min(5, S.upg.length === 0 ? 0 : 1 + Math.floor(S.upg.length / 2));
 const repTitle = r => { let t = REP_TITLES[0][1]; REP_TITLES.forEach(([v, n]) => { if (r >= v) t = n; }); return t; };
-const repMult = () => (has('decor') ? 1.15 : 1) * (sk('v3') ? 1.3 : 1);
-const saleMult = () => (sk('v1') ? 1.1 : 1) * (has('vitrine') ? 1.1 : 1) * (S.event && S.event.id === 'feira' ? 1.15 : 1);
+const repMult = () => (has('decor') ? 1.15 : 1) * (sk('v3') ? 1.3 : 1) * (sk('h4') ? 1.1 : 1);
+const saleMult = () => (sk('v1') ? 1.1 : 1) * (has('vitrine') ? 1.1 : 1) * (S.event && S.event.id === 'feira' ? 1.15 : 1) * (sk('h5') ? 1.08 : 1);
 const maxOrders = () => 3 + (has('estoque') ? 2 : 0) + (sk('v2') ? 1 : 0);
 const xpNeed = l => 40 + l * 35;
 function matCost(id) {
@@ -1512,7 +1564,7 @@ function reqText(req) {
   const t = [];
   if (req.upg) t.push(UPGRADES.find(u => u.id === req.upg).name);
   if (req.rep) t.push(req.rep + ' de reputação');
-  if (req.skill) t.push('habilidade ' + SKILLS.flatMap(b => b.nodes).find(n => n.id === req.skill).name);
+  if (req.skill) t.push('habilidade ' + skNode(req.skill).name);
   if (req.flag) t.push('segredo de Hunter');
   return t.join(' + ');
 }
@@ -2259,7 +2311,7 @@ const MINI = (() => {
     s.evT -= dt;
     if (!s.ev && s.evT <= 0 && s.prog < 0.9) {
       const k = pick(['vento', 'brasa', 'virar']); s.ev = { k, t: 0, d: k === 'virar' ? 2.8 - s.tier * 0.25 : 2.2 };
-      s.evT = 5 - s.tier * 0.6 + rand() * 3;
+      s.evT = (5 - s.tier * 0.6 + rand() * 3) * (sk('h2') ? 1.4 : 1);
     }
     if (s.ev) {
       s.ev.t += dt;
@@ -2408,7 +2460,7 @@ const MINI = (() => {
     const R = RECIPES[w.r], M = metal(), toks = R.pat.split(/\s+/).filter(Boolean), n = toks.length;
     const bpm = R.bpm + (w.m ? M.bpm : 0), beat = 60 / bpm, half = beat / 2, t0 = clock() + 0.6, lead = 4 * beat;
     // quanto mais nobre o metal, mais difícil de trabalhar: mais seções, mais notas, janela de acerto menor
-    const tier = w.m ? (DIFF_TIER[w.m] ?? 1) : 1, extra = DIFF_EXTRA[tier];
+    const tier = w.m ? (DIFF_TIER[w.m] ?? 1) : 1, extra = DIFF_EXTRA[tier] * (sk('h6') ? 0.7 : 1);
     const T = h => t0 + lead + h * half, kinds = (R.loops || 1) >= 2 || tier >= 2 ? ['A', 'B', 'C'] : ['A', 'B'];
     const hsh = (a, b) => { const x = Math.sin(a * 12.9898 + b * 78.233 + R.base * 0.37) * 43758.5453; return x - Math.floor(x); };
     s.notes = []; s.secs = [];
@@ -2460,7 +2512,7 @@ const MINI = (() => {
   function combo(ok) {
     if (ok) {
       s.combo++; s.maxC = Math.max(s.maxC, s.combo);
-      if (s.combo >= 8 && !s.fever) { s.fever = true; if (s.forge) s.forge.fever(true); judge(200, 52, 'FÚRIA DA FORJA!', PAL.gold[5]); SND.fx.rare(1); }
+      if (s.combo >= (sk('h1') ? 6 : 8) && !s.fever) { s.fever = true; if (s.forge) s.forge.fever(true); judge(200, 52, 'FÚRIA DA FORJA!', PAL.gold[5]); SND.fx.rare(1); }
       if (s.fever) s.fevN++;
     } else {
       if (s.fever && s.forge) s.forge.fever(false);
@@ -2830,7 +2882,7 @@ const MINI = (() => {
   let shineCv = null;
   function golpes() {
     const tier = tierOf();
-    s.rings = [0, 1, 2].map(i => ({ x: 176 + rand() * 48, y: 76 + rand() * 48, dur: 1.4 - i * 0.24 - tier * 0.07 }));
+    s.rings = [0, 1, 2].map(i => ({ x: 176 + rand() * 48, y: 76 + rand() * 48, dur: (1.4 - i * 0.24 - tier * 0.07) * (sk('h3') ? 1.2 : 1) }));
     s.ri = 0; s.rt = 0; s.bonus = 0; s.shine = 0; s.phase = 'strike';
   }
   INIT.finish = () => {
@@ -3078,14 +3130,39 @@ const UI = (() => {
       <button class="gold big" ${!ok || err || S.wip ? 'disabled' : ''} onclick="UI.h.craft()">Começar a forjar</button></div></div>`;
     return h;
   }
+  let skSel = null;
   function skillsHTML() {
-    let h = `<div class="bar-info">Pontos disponíveis: <b class="gold-t">${S.sp}</b> · Ganhe pontos subindo de nível (forjando e entregando encomendas). Habilidades de 3º nível marcadas com ⟷ são exclusivas entre si.</div><div class="tree">`;
-    h += SKILLS.map(br => `<div class="branch"><div class="bh">${ico(br.icon, 'ouro', 28)}<b>${br.name}</b></div>${br.nodes.map((n, i) => {
-      const own = sk(n.id), prev = i === 0 || sk(br.nodes[i - 1].id), exb = n.ex && sk(n.ex), can = !own && prev && !exb && S.sp > 0;
-      const exName = n.ex ? SKILLS.flatMap(b => b.nodes).find(x => x.id === n.ex).name : '';
-      return `<button class="node ${own ? 'own' : can ? 'can' : 'lock'}" ${can ? `onclick="UI.h.learn('${n.id}')"` : 'disabled'}><b>${own ? '✓ ' : ''}${n.name}</b><small>${n.desc}</small>${n.ex ? `<em>⟷ exclui ${exName}${exb ? ' (escolhida)' : ''}</em>` : ''}</button>`;
-    }).join('<i class="lnk"></i>')}</div>`).join('');
-    return h + '</div>';
+    const st = n => skHas(n.id) ? 'own' : (n.ex && sk(n.ex)) ? 'excl' : skCan(n) ? 'can' : n.req.every(skHas) ? 'next' : 'lock';
+    if (!skSel || !skNode(skSel)) skSel = (SKILL_TREE.find(skCan) || SKILL_TREE[0]).id;
+    let svg = '<svg viewBox="0 0 640 500" preserveAspectRatio="none">';
+    TIER_RAD.forEach(r => { svg += `<circle cx="320" cy="250" r="${r}" class="ring"/>`; });
+    SKILL_TREE.forEach(n => n.req.forEach(rq => {
+      const a = skNode(rq).xy, b = n.xy, c = skHas(n.id) ? 'own' : skHas(rq) ? (skCan(n) ? 'can' : 'next') : 'lock';
+      svg += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="ln ${c}"/>`;
+    }));
+    // pares exclusivos: arco vermelho tracejado entre os topos
+    SKILL_TREE.filter(n => n.ex && n.id < n.ex).forEach(n => {
+      const a = n.xy, b = skNode(n.ex).xy, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, k = 1.22;
+      svg += `<path d="M${a[0]} ${a[1]} Q${320 + (mx - 320) * k} ${250 + (my - 250) * k} ${b[0]} ${b[1]}" class="ex"/>`;
+    });
+    SKILL_ORDER.forEach((bid, k) => {
+      const br = SKILLS.find(b => b.id === bid), ang = (-90 + k * 60) * Math.PI / 180, x = 320 + Math.cos(ang) * 198, y = 250 + Math.sin(ang) * 198 + ([2, 3, 4].includes(k) ? 42 : -32);
+      svg += `<text x="${x | 0}" y="${y | 0}" class="bl">${esc(br.name)}</text>`;
+    });
+    svg += '</svg>';
+    const nodes = SKILL_TREE.map(n => {
+      const s2 = st(n), kind = n.tier === 0 ? 'root' : n.tier === 'h' ? 'hyb' : n.tier === 3 ? 'cap' : '';
+      return `<button class="sn ${s2} ${kind} ${n.id === skSel ? 'sel' : ''}" style="left:${(n.xy[0] / 6.4).toFixed(2)}%;top:${(n.xy[1] / 5).toFixed(2)}%" title="${esc(n.name)}" onclick="UI.h.skSel('${n.id}')"><span>${ico(n.icon, s2 === 'own' ? 'ouro' : 'ferro', 24)}</span>${typeof n.tier === 'number' && n.tier ? `<i>${TIER_ROM[n.tier - 1]}</i>` : n.tier === 'h' ? '<i>✦</i>' : ''}</button>`;
+    }).join('');
+    // quadro de detalhes do nó escolhido
+    const n = skNode(skSel), s2 = st(n), exN = n.ex ? skNode(n.ex) : null;
+    const reqs = n.req.filter(x => x !== 'raiz').map(x => `<li class="${skHas(x) ? 'ok' : 'no'}">${skHas(x) ? '✓' : '✗'} ${esc(skNode(x).name)}</li>`).join('')
+      + (n.tier ? `<li class="${S.level >= n.lvl ? 'ok' : 'no'}">${S.level >= n.lvl ? '✓' : '✗'} Ferreiro nível ${n.lvl}</li><li class="${S.sp >= n.cost || skHas(n.id) ? 'ok' : 'no'}">${S.sp >= n.cost || skHas(n.id) ? '✓' : '✗'} Custo: ${n.cost} ponto${n.cost > 1 ? 's' : ''}</li>` : '');
+    const tipo = n.tier === 0 ? 'Raiz' : n.tier === 'h' ? 'Talento híbrido · ' + SKILLS.find(b => b.id === n.a).name + ' + ' + SKILLS.find(b => b.id === n.b).name : n.br.name + ' · Nível ' + TIER_ROM[n.tier - 1];
+    const acao = s2 === 'own' ? '<div class="sd-ok">✓ Aprendida</div>' : s2 === 'excl' ? `<div class="sd-no">Bloqueada: você escolheu ${esc(exN.name)}</div>` : s2 === 'can' ? `<button class="gold" onclick="UI.h.learn('${n.id}')">Aprender (${n.cost} ponto${n.cost > 1 ? 's' : ''})</button>` : '<div class="sd-no">Ainda não disponível</div>';
+    const det = `<div class="sdet"><div class="sd-ic">${ico(n.icon, s2 === 'own' ? 'ouro' : 'ferro', 48)}</div><h3>${esc(n.name)}</h3><div class="sd-t">${esc(tipo)}</div><p>${esc(n.desc)}</p>${reqs ? `<ul>${reqs}</ul>` : ''}${exN ? `<div class="sd-ex">⟷ Exclusiva com ${esc(exN.name)}: escolher uma bloqueia a outra.</div>` : ''}${acao}</div>`;
+    const ap = SKILL_TREE.filter(x => x.tier && skHas(x.id)).length;
+    return `<div class="bar-info">Pontos: <b class="gold-t">${S.sp}</b> · Nível do ferreiro: <b class="gold-t">${S.level}</b> · Aprendidas: <b class="gold-t">${ap}/${SKILL_TREE.length - 1}</b> · Clique num nó para ver detalhes. Caminhos dourados = aprendidos; tracejado brilhando = pode aprender.</div><div class="stree-wrap"><div class="stree">${svg}${nodes}</div>${det}</div>`;
   }
   function oficinaHTML() {
     let h = `<div class="bar-info">Estágio: <b class="gold-t">${STAGES[stageIdx()]}</b> · Moedas: <b class="gold-t">${S.gold}</b> · Reputação: <b class="gold-t">${S.rep}</b></div><div class="cards">`;
@@ -3166,7 +3243,8 @@ const UI = (() => {
     deliver(id) { deliverOrder(id); render(); },
     forOrder(id) { const o = S.orders.find(x => x.id === id); recSel = o.r; if (o.m) metSel = o.m; tab = 'receitas'; panel('estoque'); },
     startSpecial(id) { const o = S.orders.find(x => x.id === id); if (o && startCraft(o.r, null, o.id)) closePanel(); else render(); },
-    learn(id) { if (S.sp < 1) return; S.sp--; S.skills.push(id); SND.fx.levelup(); toast('Habilidade aprendida: ' + SKILLS.flatMap(b => b.nodes).find(n => n.id === id).name, 'rep'); render(); },
+    learn(id) { const n = skNode(id); if (!n || !skCan(n)) return; S.sp -= n.cost; S.skills.push(id); SND.fx.levelup(); toast('Habilidade aprendida: ' + n.name, 'rep'); render(); },
+    skSel(id) { skSel = id; SND.fx.click(); render(); },
     upg(id) {
       const u = UPGRADES.find(x => x.id === id); if (has(id) || S.gold < u.cost || S.rep < u.rep) return;
       addGold(-u.cost); S.upg.push(id); SND.fx.fanfare(); toast(u.name + ' instalada! A oficina mudou.', u.icon); shake = 4;
