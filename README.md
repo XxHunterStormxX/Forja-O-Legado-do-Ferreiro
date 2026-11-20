@@ -4,11 +4,13 @@ Jogo de simulação de ferraria em pixel art, feito em um único arquivo HTML: a
 
 ## Como jogar
 
-Abra `Development Notes/Forja_O_Legado_do_Ferreiro.html` em um navegador. Esse arquivo é sempre a versão mais nova.
+**Jogue no navegador:** https://xxhunterstormxx.github.io/Forja-O-Legado-do-Ferreiro/
 
-## Versões
+Esse link abre sempre a versão mais nova. O jogo é o arquivo `index.html`, na raiz do repositório.
 
-Cada versão fica em `Development Notes/BETA 0.N/`, com um README do que mudou. Cada versão é desenvolvida em um branch próprio (`beta-0.N`) e depois mesclada no `main`.
+## Versões (backups)
+
+Cada versão fica guardada em `Development Notes/BETA 0.N/`, com um README do que mudou. Cada versão é desenvolvida em um branch próprio (`beta-0.N`) e depois mesclada no `main`.
 
 | Versão | O que mudou |
 |---|---|
