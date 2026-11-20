@@ -20,3 +20,4 @@ Cada versão fica em `Development Notes/BETA 0.N/`, com um README do que mudou. 
 | [BETA 0.6](Development%20Notes/BETA%200.6/) | Partitura de verdade (clave de sol, Ré menor) e todas as músicas dentro de escalas naturais. |
 | [BETA 0.7](Development%20Notes/BETA%200.7/) | Dificuldade progressiva por material: metal mais nobre = mais notas e menos margem. |
 | [BETA 0.8](Development%20Notes/BETA%200.8/) | Animações refeitas e minijogos de fornalha, têmpera, afiação e acabamento com mais desafio. |
+| [BETA 0.9](Development%20Notes/BETA%200.9/) | Árvore de habilidades de verdade: constelação com raiz, 6 ramos, 6 talentos híbridos e requisitos. |
