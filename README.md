@@ -24,3 +24,4 @@ Cada versão fica em `Development Notes/BETA 0.N/`, com um README do que mudou. 
 | [BETA 0.10](Development%20Notes/BETA%200.10/) | Marcenaria: sala nova com torno (cabos em 5 madeiras) e mesa de montagem com planta (lâmina, guarda, cabo, pomo, cabeça e cunha). |
 | [BETA 0.11](Development%20Notes/BETA%200.11/) | Personagens e NPCs redesenhados 1,5× maiores (24×36), proporcionais aos móveis. |
 | [BETA 0.12](Development%20Notes/BETA%200.12/) | Cada peça com seu minijogo: Fundição (guarda, pomo, tsuba, virola, aro), Serra (cunhas e tábuas) e Marca do Ferreiro na nova mesa do salão. |
+| [BETA 0.13](Development%20Notes/BETA%200.13/) | Salão 2,6× maior e organizado (forja/metalurgia + loja), câmera que segue o personagem, sem a bancada de receitas; tela cheia e áudio sem picotes no celular. |
