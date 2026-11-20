@@ -1448,7 +1448,7 @@ const SCENES = {
     ['pai', 'Mas você aprendeu o cântico. Lembra? PAH... SHACK... O metal escuta quem canta para ele.'],
     ['pai', 'Acenda a fornalha. Atenda quem bater à porta. E, se um velho espadachim aparecer, ouça o que ele tem a dizer. — Edran Halvor'],
     ['narr', 'A oficina está empoeirada, mas a bigorna ainda está de pé. É hora de recomeçar.'],
-    ['dica', 'Ande com WASD ou setas e use E (ou clique) nas estações. Abra o Livro de Receitas (botão Receitas no topo, ou a Fornalha) e escolha Pregos.'],
+    ['dica', 'Ande com WASD ou setas e use E (ou clique) nas estações. Toda peça começa na Mesa de Montagem, no fundo da forja: vá até ela e escolha a planta dos Pregos.'],
   ],
   tobias1: [
     ['tobias', 'Pelas barbas do meu avô... a fornalha dos Halvor acesa outra vez!'],
@@ -1472,7 +1472,7 @@ const SCENES = {
     ['hunter', 'Esta é Tenkai. «Abrir o Céu Azul». Com ela derrubei Tiamat em três golpes... e nem assim ela perdeu o fio. Até agora.'],
     ['hunter', 'Uma espada deve ser usada com o coração, afiada pela vontade de quem a empunha. Sempre para proteger os mais fracos.'],
     ['hunter', 'Afie Tenkai para mim. Só o fio: o resto ela faz sozinha. Volto quando estiver pronta.'],
-    ['dica', 'Uma encomenda especial foi adicionada. Inicie-a pelo Livro de Receitas (é preciso ter o Rebolo de Afiação).'],
+    ['dica', 'Uma encomenda especial foi adicionada. Inicie-a na Fornalha (é preciso ter o Rebolo de Afiação).'],
   ],
   hunter1b: [
     ['hunter', '...O fio canta de novo. Seu avô teria orgulho.'],
@@ -1527,7 +1527,8 @@ const TIPS = [
   'Durma para avançar o dia. O jogo salva automaticamente ao dormir.',
   'Cada metal tem sua própria zona de calor. O aço exige fogo alto.',
   'Você pode pausar uma peça a qualquer momento e voltar a ela depois.',
-  'A porta no fundo da forja leva à Marcenaria: lá o Torno faz os cabos e a Mesa de Montagem junta as peças na planta.',
+  'Toda peça começa na Mesa de Montagem e volta para ela no fim, para ser montada na planta. Reparos começam na Fornalha.',
+  'A porta no fundo da forja leva à Marcenaria: lá o Torno faz os cabos e o Cavalete serra cunhas e tábuas.',
   'Madeiras nobres valorizam a peça, mas são mais difíceis de tornear.',
 ];
 
@@ -1635,10 +1636,13 @@ function canStart(r, m) {
   for (const k in R.extra) if ((S.mats[k] || 0) < R.extra[k]) return 'Falta ' + MATS[k].name + ' (' + R.extra[k] + ').';
   return null;
 }
+const noLugar = id => room === 'forja' && mode === 'play' && (nearZone() || {}).id === id;
 function startCraft(r, m, orderId) {
   if (S.wip) { UI.toast('Já existe uma peça em andamento. Termine-a ou descarte-a.', 'forja'); return false; }
   const R = RECIPES[r];
   if (r === 'tenkai' && !has('rebolo')) { UI.toast('Hunter pediu o fio: é preciso um Rebolo de Afiação (Melhorias).', 'rebolo'); return false; }
+  const lugar = R.special ? 'fornalha' : 'mesa', z = room === 'forja' && nearZone();
+  if (!z || z.id !== lugar) { UI.toast(R.special ? 'Reparos começam na Fornalha: vá até ela.' : 'Toda peça começa na Mesa de Montagem: vá até ela e escolha a planta.', R.special ? 'chama' : 'madeira'); return false; }
   const err = canStart(r, m); if (err) { UI.toast(err, 'bau'); return false; }
   if (R.metal) S.mats[m] -= R.metal;
   for (const k in R.extra) S.mats[k] -= R.extra[k];
@@ -1648,17 +1652,18 @@ function startCraft(r, m, orderId) {
   UI.hud(); return true;
 }
 function discardWip() { if (!S.wip) return; const o = S.wip.order; S.wip = null; if (o) { } UI.toast('A peça foi descartada. Os materiais se perderam.', 'forja'); UI.hud(); }
-const stationName = st => ({ fornalha: 'Fornalha', bigorna: 'Bigorna', tanque: 'Tanque', rebolo: 'Rebolo', bancada: 'Bancada', mesa: 'Mesa de Montagem (Marcenaria)', moldes: 'Moldes de Fundição', marca: 'Mesa do Ferreiro' })[st];
+const stationName = st => ({ fornalha: 'Fornalha', bigorna: 'Bigorna', tanque: 'Tanque', rebolo: 'Rebolo', bancada: 'Bancada', mesa: 'Mesa de Montagem', moldes: 'Moldes de Fundição', marca: 'Mesa do Ferreiro' })[st];
 function nextStep() { return S.wip ? RECIPES[S.wip.r].steps[S.wip.step] : null; }
 function stationUse(st) {
   const w = S.wip;
   if (!w) {
-    if (st === 'marca' || st === 'fornalha') { UI.recipeBook(); return; }
-    UI.toast('Comece uma peça no Livro de Receitas (botão Receitas) para usar esta estação.', 'forja'); return;
+    if (st === 'mesa') { UI.recipeBook(); return; }
+    if (st === 'fornalha') { const esp = S.orders.filter(o => RECIPES[o.r].special && (o.status === 'ativa' || o.status === 'atrasada')); if (esp.length) { UI.assembly(esp.map(o => ({ id: String(o.id), t: o.r === 'tenkai' ? 'Afiar Tenkai' : 'Reparo de arma', d: o.cid + ' · etapas: ' + RECIPES[o.r].steps.map(s => STEP[s].name).join(' → '), ok: true })).concat([CANCELAR]), id => { if (id !== 'x') startCraft(S.orders.find(o => String(o.id) === id).r, null, +id); }, 'Reparos começam na Fornalha'); return; } }
+    UI.toast('Toda peça começa na Mesa de Montagem, no fundo da forja: escolha a planta lá.', 'forja'); return;
   }
   const step = nextStep();
   if (STEP[step].st !== st) {
-    if (st === 'marca') { UI.wipMenu(); return; }
+    if (st === 'mesa') { UI.wipMenu(); return; }
     UI.toast('A peça precisa ir para: ' + stationName(STEP[step].st) + ' (' + STEP[step].name + ').', STEP[step].icon); return;
   }
   if (step === 'heat') {
@@ -1689,9 +1694,9 @@ function caboPronto(tc, q) {
 }
 function montar(w) {
   const R = RECIPES[w.r], cs = S.cabos.filter(c => c.t === R.cabo).sort((a, b) => b.q - a.q);
-  if (!cs.length) { UI.toast('Falta ' + CABO[R.cabo].name + (CABO[R.cabo].serra ? '. Serre no Cavalete' : '. Faça um no Torno') + ', aqui na Marcenaria.', 'madeira'); return; }
+  if (!cs.length) { UI.toast('Falta ' + CABO[R.cabo].name + (CABO[R.cabo].serra ? '. Serre no Cavalete' : '. Faça um no Torno') + ' da Marcenaria.', 'madeira'); return; }
   const cunha = R.cunha ? S.cabos.filter(c => c.t === 'cunha').sort((a, b) => b.q - a.q)[0] : null;
-  if (R.cunha && !cunha) { UI.toast('Falta uma Cunha para travar a cabeça. Serre no Cavalete, aqui na Marcenaria.', 'madeira'); return; }
+  if (R.cunha && !cunha) { UI.toast('Falta uma Cunha para travar a cabeça. Serre no Cavalete da Marcenaria.', 'madeira'); return; }
   UI.assembly(cs.map(c => ({ id: String(c.id), t: caboNome(c), d: 'Acabamento ' + Math.round(c.q * 100) + '% · valor da peça ×' + MATS[c.w].val, ok: true })).concat([CANCELAR]), id => {
     if (id === 'x') return;
     const c = S.cabos.find(k => String(k.id) === id);
@@ -1966,8 +1971,8 @@ const timeLabel = t => t < 0.3 ? 'Manhã' : t < 0.6 ? 'Tarde' : t < 0.88 ? 'Enta
 // MUNDO: colisões, zonas, desenho
 // ---------------------------------------------------------------------------
 function colliders() {
-  if (room === 'marc') return [[16, 60, 64, 34], [214, 62, 88, 12], [30, 166, 108, 16], [222, 128, 108, 18], [168, 196, 48, 10], [350, 192, 18, 12], [356, 76, 18, 12]];
-  const c = [[40, 60, 64, 34], [108, 82, 18, 14], [154, 124, 26, 14], [40, 196, 32, 18], [110, 104, 26, 10], [104, 336, 14, 7], [30, 346, 60, 10], [272, 340, 16, 10], [360, 312, 52, 10], [230, 184, 32, 10], [220, 274, 48, 10], [336, 66, 52, 16], [520, 66, 50, 12], [450, 226, 140, 20], [600, 314, 16, 10], [600, 352, 14, 8]];
+  if (room === 'marc') return [[16, 60, 64, 34], [214, 62, 88, 12], [30, 166, 108, 16], [226, 128, 70, 14], [168, 196, 48, 10], [350, 192, 18, 12], [356, 76, 18, 12]];
+  const c = [[186, 70, 112, 18], [40, 60, 64, 34], [108, 82, 18, 14], [154, 124, 26, 14], [40, 196, 32, 18], [110, 104, 26, 10], [104, 336, 14, 7], [30, 346, 60, 10], [272, 340, 16, 10], [360, 312, 52, 10], [230, 184, 32, 10], [220, 274, 48, 10], [336, 66, 52, 16], [520, 66, 50, 12], [450, 226, 140, 20], [600, 314, 16, 10], [600, 352, 14, 8]];
   c.push([310, 144, 16, 6], [310, 294, 16, 6], [36, 254, 32, 12], [82, 196, 14, 8], [398, 76, 30, 10], [420, 148, 30, 6], [470, 348, 14, 8]);
   if (has('rebolo')) c.push([132, 268, 26, 12]);
   return c;
@@ -1977,6 +1982,7 @@ const ZONES = [
   { id: 'bigorna', x: 140, y: 110, w: 56, h: 46, label: 'Bigorna', act: 'Martelar', mk: [165, 100] },
   { id: 'tanque', x: 32, y: 182, w: 54, h: 48, label: 'Tanque de Têmpera', act: 'Temperar', mk: [56, 176] },
   { id: 'rebolo', x: 122, y: 254, w: 48, h: 40, label: 'Rebolo', act: 'Afiar', mk: [144, 238], need: 'rebolo' },
+  { id: 'mesa', x: 180, y: 58, w: 124, h: 66, label: 'Mesa de Montagem', act: 'Escolher a planta e começar a peça', mk: [242, 46] },
   { id: 'moldes', x: 224, y: 160, w: 44, h: 42, label: 'Moldes de Fundição', act: 'Fundir peças pequenas', mk: [246, 158] },
   { id: 'marca', x: 212, y: 248, w: 66, h: 50, label: 'Mesa do Ferreiro', act: 'Marcar e finalizar', mk: [245, 248] },
   { id: 'estoque', x: 332, y: 62, w: 74, h: 34, label: 'Estoque', act: 'Materiais e fornecedor' },
@@ -1988,7 +1994,6 @@ const ZONES = [
   { id: 'porta', room: 'marc', x: 154, y: 66, w: 46, h: 24, label: 'Forja', act: 'Voltar para a forja', mk: [177, 28] },
   { id: 'madeiras', room: 'marc', x: 14, y: 90, w: 74, h: 26, label: 'Pilha de Madeiras', act: 'Comprar madeira' },
   { id: 'torno', room: 'marc', x: 22, y: 128, w: 124, h: 36, label: 'Torno', act: 'Tornear um cabo', mk: [84, 132] },
-  { id: 'mesa', room: 'marc', x: 214, y: 96, w: 124, h: 76, label: 'Mesa de Montagem', act: 'Montar a peça na planta', mk: [276, 92] },
   { id: 'serra', room: 'marc', x: 158, y: 166, w: 66, h: 44, label: 'Cavalete', act: 'Serrar cunhas e tábuas', mk: [192, 172] },
 ];
 const zones = () => ZONES.filter(z => (z.room || 'forja') === room);
@@ -2157,6 +2162,7 @@ function drawWorld(t, opt = {}) {
   const list = [
     [96, () => { blit(g, ART.furnace[st], 40, 0); drawFire(59, 82, (x, y) => ART.fireMask(x - 40, y), 0.75 + st * 0.12 + Math.sin(t * 3) * 0.05, t); for (let i = 0; i < 26; i++) { const yy = 81 + Math.round(Math.sin(i * 2.3 + t) * 0.6); g.fillStyle = (i * 7 + Math.floor(t * 4)) % 5 ? PAL.coal[1] : PAL.fire[3]; g.fillRect(59 + i, yy, 1, 2); } }],
     [96.5, () => blit(g, ART.bellows[(Math.floor(t * 3) % 6 === 0) || heating ? 1 : 0], 104, 70)],
+    [104, () => blit(g, marcSprites().mesa, 186, 58)],
     [140, () => { blit(g, ART.anvil[has('bigorna') ? 1 : 0], 150, 112); if (S && S.wip && S.wip.step > 0 && S.wip.sc.heat !== undefined && !S.wip.sc.hammer) { g.fillStyle = heatColor(0.6); g.fillRect(160, 115, 12, 2); } }],
     [214, () => { blit(g, ART.trough, 40, 190); g.fillStyle = PAL.water[3]; const o = Math.floor(t * 2) % 6; g.fillRect(46 + o * 3, 193, 4, 1); g.fillRect(58 - o, 195, 3, 1); }],
     [115, () => blit(g, ART.coalbox, 110, 100)],
@@ -2332,7 +2338,7 @@ function drawMarc(t, opt) {
   S.cabos.filter(c => !CABO[c.t].serra).slice(0, 8).forEach((c, i) => { const P2 = WOODPAL[c.w], x0 = 98 + i * 6, len = c.t === 'curto' ? 14 : c.t === 'longo' ? 26 : 30; d.r(x0, 26, 3, len, P2[2]); d.vl(x0, 26, len, P2[3]); d.r(x0 - (c.t === 'curto' ? 1 : 0), 26 + len - 3, c.t === 'curto' ? 5 : 3, 3, P2[1]); });
   const list = [
     [188, () => { blit(g, M.torno, 28, 142); for (let k = 0; k < 3; k++) { const yy = 155 + ((Math.floor(t * 18) + k * 3) % 8); d.r(56, yy, 62, 1, PAL.wood[k ? 3 : 5]); } d.r(56, 154, 62, 1, PAL.wood[5]); }],
-    [152, () => blit(g, M.mesa, 218, 106)],
+    [150, () => { const d = new Pix(g); [0, 1, 2, 3].forEach(k => { const y = 128 - k * 5, x = 228 + (k % 2) * 3; d.r(x, y, 64, 5, PAL.ink); d.r(x + 1, y + 1, 62, 3, WOODPAL[WOODS[k % WOODS.length]][2 + (k % 2)]); d.hl(x + 1, y + 1, 62, WOODPAL[WOODS[k % WOODS.length]][4]); }); }],
     [208, () => blit(g, M.cavalete, 166, 184)],
     [204, () => blit(g, ART.crate, 350, 190)],
     [210, () => blit(g, ART.sack, 330, 204)],
@@ -3804,7 +3810,7 @@ const UI = (() => {
     h += '<div class="cards">' + act.map(o => {
       const R = RECIPES[o.r], m = S.items.filter(it => orderMatch(o, it)), days = o.due == null ? null : o.due - S.day;
       const prazo = o.due == null ? 'Sem prazo' : o.status === 'atrasada' ? '<b class="red">Atrasada — paga metade</b>' : days === 0 ? '<b class="warn">Entrega hoje</b>' : `Dia ${o.due} (${days} dia${days > 1 ? 's' : ''})`;
-      const btn = o.special ? (S.wip && S.wip.order === o.id ? '<button disabled>Em andamento</button>' : `<button class="gold" onclick="UI.h.startSpecial(${o.id})">Iniciar trabalho</button>`)
+      const btn = o.special ? (S.wip && S.wip.order === o.id ? '<button disabled>Em andamento</button>' : (noLugar('fornalha') ? `<button class="gold" onclick="UI.h.startSpecial(${o.id})">Iniciar trabalho</button>` : '<button disabled>Inicie na Fornalha</button>'))
         : m.length ? `<button class="gold" onclick="UI.h.deliver(${o.id})">Entregar ${esc(m.sort((a, b) => a.value - b.value)[0].name)}</button>` : `<button onclick="UI.h.forOrder(${o.id})">Forjar agora</button>`;
       return `<div class="card ${o.imp ? 'imp' : ''}">${ico(R.icon, o.m || 'ferro', 40)}<div class="ct"><b>${esc(o.special ? (o.r === 'tenkai' ? 'Afiar Tenkai' : 'Reparo de arma') : R.name + (o.m ? ' de ' + MATS[o.m].name : ''))}</b>
         <small>${esc(o.cid)}${o.imp ? ' · <span class="warn">importante</span>' : ''}</small>
@@ -3840,8 +3846,8 @@ const UI = (() => {
   function recipesHTML() {
     const specials = S.orders.filter(o => o.special && (o.status === 'ativa' || o.status === 'atrasada'));
     let h = '';
-    if (S.wip) h += `<div class="bar-info warn">Já existe uma peça em andamento (${esc(itemName(S.wip.r, S.wip.m))}). Termine ou descarte-a na Mesa do Ferreiro antes de começar outra.</div>`;
-    if (specials.length) h += `<h4>Trabalhos especiais</h4><div class="cards">` + specials.map(o => `<div class="card imp">${ico(RECIPES[o.r].icon, 'aco', 40)}<div class="ct"><b>${o.r === 'tenkai' ? 'Afiar Tenkai' : 'Reparo de arma'}</b><small>${esc(o.cid)} · etapas: ${RECIPES[o.r].steps.map(s => STEP[s].name).join(' → ')} · sem materiais</small></div><button class="gold" ${S.wip ? 'disabled' : ''} onclick="UI.h.startSpecial(${o.id})">Iniciar</button></div>`).join('') + '</div>';
+    if (S.wip) h += `<div class="bar-info warn">Já existe uma peça em andamento (${esc(itemName(S.wip.r, S.wip.m))}). Termine ou descarte-a na Mesa de Montagem antes de começar outra.</div>`;
+    if (specials.length) h += `<h4>Trabalhos especiais</h4><div class="cards">` + specials.map(o => `<div class="card imp">${ico(RECIPES[o.r].icon, 'aco', 40)}<div class="ct"><b>${o.r === 'tenkai' ? 'Afiar Tenkai' : 'Reparo de arma'}</b><small>${esc(o.cid)} · etapas: ${RECIPES[o.r].steps.map(s => STEP[s].name).join(' → ')} · sem materiais</small></div><button class="gold" ${S.wip || !noLugar('fornalha') ? 'disabled' : ''} onclick="UI.h.startSpecial(${o.id})">${noLugar('fornalha') ? 'Iniciar' : 'Inicie na Fornalha'}</button></div>`).join('') + '</div>';
     const list = Object.keys(RECIPES).filter(k => !RECIPES[k].special);
     if (!recSel || !RECIPES[recSel] || RECIPES[recSel].special) recSel = 'pregos';
     const R = RECIPES[recSel], mets = METALS.filter(metalOK);
@@ -3855,7 +3861,7 @@ const UI = (() => {
       <div class="lbl">Metal (${R.metal})</div><div class="metals">${METALS.map(m => { const okm = metalOK(m); return `<button class="${m === metSel ? 'on' : ''}" ${okm ? '' : 'disabled title="Requer: ' + reqText(MATS[m].req) + '"'} onclick="UI.h.met('${m}')">${ico('lingote', m, 20)}${MATS[m].name}<em>${S.mats[m] || 0}</em></button>`; }).join('')}</div>
       <div class="lbl">Outros materiais</div><div class="need">${Object.keys(R.extra).length ? Object.entries(R.extra).map(([k, n]) => `<span class="${(S.mats[k] || 0) >= n ? '' : 'red'}">${ico(MATS[k].icon, 'ferro', 18)} ${n} ${MATS[k].name} (tem ${S.mats[k] || 0})</span>`).join('') : '<span>Nenhum</span>'}<span>${ico('carvao', 'ferro', 18)} 1 Carvão por aquecimento (tem ${S.mats.carvao})</span>${R.cabo ? `<span class="${S.cabos.some(c => c.t === R.cabo) ? '' : 'red'}">${ico('madeira', 'freixo', 18)} 1 ${CABO[R.cabo].name} — feito no ${CABO[R.cabo].serra ? 'Cavalete' : 'Torno'} da Marcenaria (tem ${S.cabos.filter(c => c.t === R.cabo).length})</span>` : ''}${R.cunha ? `<span class="${S.cabos.some(c => c.t === 'cunha') ? '' : 'red'}">${ico('madeira', 'madeira', 18)} 1 Cunha — serrada no Cavalete (tem ${S.cabos.filter(c => c.t === 'cunha').length})</span>` : ''}${R.fund ? `<span>${ico('lingote', 'ferro', 18)} ${R.fund.map(k => MOLDE[k]).join(' e ')} — fundidos nos Moldes, com o mesmo metal</span>` : ''}</div>
       ${ok ? (err ? `<div class="red errl">${err}</div>` : '') : `<div class="red errl">Bloqueada — requer ${reqText(R.req)}</div>`}
-      <button class="gold big" ${!ok || err || S.wip ? 'disabled' : ''} onclick="UI.h.craft()">Começar a forjar</button></div></div>`;
+      ${noLugar('mesa') ? `<button class="gold big" ${!ok || err || S.wip ? 'disabled' : ''} onclick="UI.h.craft()">Começar na Mesa de Montagem</button>` : '<button class="big" disabled>Vá à Mesa de Montagem para começar</button>'}</div></div>`;
     return h;
   }
   let skSel = null;
@@ -4076,7 +4082,7 @@ const UI = (() => {
   h.acceptRepair = cid => {
     const c = findC(cid); if (!c) return;
     S.orders.push({ id: S.uid++, cid: c.name, r: 'reparo', m: null, qi: 0, due: S.day + 1, gold: c.req.gold, rep: 4, status: 'ativa', special: true });
-    S.stats.served++; closeDlg(); toast('Reparo aceito. Inicie-o pelo Livro de Receitas.', 'forja'); leave(c); checkGoals();
+    S.stats.served++; closeDlg(); toast('Reparo aceito. Inicie-o na Fornalha.', 'forja'); leave(c); checkGoals();
   };
   h.bye = cid => { const c = findC(cid); closeDlg(); if (c) leave(c); };
   function closeDlg() { clearInterval(typeT); show('dialog', false); dlg = null; }
