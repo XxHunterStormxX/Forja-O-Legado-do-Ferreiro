@@ -699,12 +699,12 @@ const SND = (() => {
     pop();
   }
   // rebolo contínuo
-  function grind() {
+  function grind(f0 = 1200, fs = 1800, q = 3) {
     if (!ctx) return { set() { }, stop() { } };
     const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-    s.buffer = noiseBuf; s.loop = true; f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = 3; g.gain.value = 0;
+    s.buffer = noiseBuf; s.loop = true; f.type = 'bandpass'; f.frequency.value = f0; f.Q.value = q; g.gain.value = 0;
     s.connect(f); f.connect(g); g.connect(S()); s.start();
-    return { set(p) { g.gain.setTargetAtTime(0.18 * p, ctx.currentTime, 0.05); f.frequency.setTargetAtTime(1200 + p * 1800, ctx.currentTime, 0.05); }, stop() { g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); setTimeout(() => { try { s.stop(); } catch (e) { } }, 300); } };
+    return { set(p) { g.gain.setTargetAtTime(0.18 * p, ctx.currentTime, 0.05); f.frequency.setTargetAtTime(f0 + p * fs, ctx.currentTime, 0.05); }, stop() { g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); setTimeout(() => { try { s.stop(); } catch (e) { } }, 300); } };
   }
   return { init, now, setVol, vol, setDuck, playMusic, stopMusic, fx, ambient, grind, forge, mf, chord, FORGE_CH, get ready() { return !!ctx; }, get running() { return !!ctx && ctx.state === 'running'; } };
 })();
@@ -872,6 +872,11 @@ const METAL = {
   mithril: ['#1b5560', '#2a8a93', '#5bcfcd', '#d2fff7'],
   ouro: ['#6e4210', '#a8681c', '#e0a838', '#ffe9a0'],
 };
+const WOODPAL = {
+  madeira: ['#3e2814', '#6e4c26', '#a07238', '#cc9c5c', '#e8c890'], freixo: ['#463a26', '#766446', '#a8946a', '#cfbc8e', '#ece0b8'],
+  carvalho: ['#34200e', '#5a3a1c', '#82562c', '#a87844', '#c89a62'], nogueira: ['#1e120a', '#382214', '#563620', '#764e32', '#98704e'],
+  ebano: ['#0a0809', '#171314', '#262022', '#3a3234', '#5a5052'],
+};
 const ICONS = {
   pregos: ['................', '..bbb...........', '..aab..bbb......', '...c...aab.bbb..', '...c....c..aab..', '...c....c...c...', '..lllllllllll...', '..mmmmmmmmmmm...', '...c....c...c...', '...c....c...c...', '...e....c...c...', '...e....e...e...', '........e...e...', '............e...'],
   ferradura: ['................', '.....cbbbbc.....', '...cbaaaaaabc...', '..cbac....cabc..', '..bac......cab..', '.cbc........cbc.', '.cbc........cbc.', '.cbe........ebc.', '.cbc........cbc.', '.cbc........cbc.', '.ceb........bec.', '.eec........cee.', '.ee..........ee.'],
@@ -898,6 +903,7 @@ function iconPal(metal) {
     a: m[3], b: m[2], c: m[1], e: m[0], w: PAL.wood[5], x: PAL.wood[4], y: PAL.wood[2], l: PAL.leather[3], m: PAL.leather[1], L: PAL.leather[4],
     g: PAL.gold[4], h: PAL.gold[2], r: PAL.red[3], R: PAL.red[2], k: PAL.coal[1], K: PAL.coal[2], z: PAL.coal[4], p: PAL.parch[3], q: PAL.parch[1],
     s: '#3fd0e8', S: '#1f7f9a', t: '#145566', n: PAL.parch[4], N: PAL.parch[1],
+    ...(WOODPAL[metal] ? { w: WOODPAL[metal][3], x: WOODPAL[metal][2], y: WOODPAL[metal][1], p: WOODPAL[metal][4], q: WOODPAL[metal][1] } : {}),
   };
 }
 const iconCache = new Map();
@@ -1233,7 +1239,11 @@ function portrait(o) {
 // ============================================================================
 const MATS = {
   carvao: { name: 'Carvão', icon: 'carvao', cost: 5, desc: 'Combustível da fornalha. Cada aquecimento consome 1.' },
-  madeira: { name: 'Madeira', icon: 'madeira', cost: 5, desc: 'Cabos e hastes para ferramentas, lanças e escudos.' },
+  madeira: { name: 'Pinho', icon: 'madeira', tint: 'madeira', cost: 5, val: 1, wd: [3.2, 0.16, 2.2, 260], desc: 'Macio e barato. No torno corta rápido: fácil passar do ponto. Também serve para escudos.' },
+  freixo: { name: 'Freixo', icon: 'madeira', tint: 'freixo', cost: 9, val: 1.12, wd: [2.6, 0.17, 1.9, 140], desc: 'Flexível e resistente: a madeira clássica dos cabos.' },
+  carvalho: { name: 'Carvalho', icon: 'madeira', tint: 'carvalho', cost: 13, val: 1.22, wd: [2.1, 0.19, 1.6, 85], req: { rep: 15 }, desc: 'Dura e pesada. O formão responde devagar; às vezes pede duas passadas.' },
+  nogueira: { name: 'Nogueira', icon: 'madeira', tint: 'nogueira', cost: 20, val: 1.35, wd: [2.3, 0.21, 1.35, 75], req: { rep: 35 }, desc: 'Escura e nobre. Tolerância pequena no torno.' },
+  ebano: { name: 'Ébano', icon: 'madeira', tint: 'ebano', cost: 38, val: 1.55, wd: [1.7, 0.23, 1.05, 50], req: { rep: 70 }, desc: 'Rara e quase negra. Duríssima, exige duas passadas e precisão máxima.' },
   couro: { name: 'Couro', icon: 'couro', cost: 9, desc: 'Empunhaduras, correias e forros.' },
   ferro: { name: 'Ferro', icon: 'lingote', metal: 'ferro', cost: 11, heat: [0.5, 0.68], qw: 0.13, bpm: 0, val: 1, desc: 'Metal comum e confiável. Zona de calor larga.' },
   bronze: { name: 'Bronze', icon: 'lingote', metal: 'bronze', cost: 15, heat: [0.36, 0.52], qw: 0.15, bpm: -8, val: 1.25, desc: 'Funde cedo e perdoa erros. Ritmo mais lento.' },
@@ -1243,28 +1253,42 @@ const MATS = {
 };
 const METALS = ['ferro', 'bronze', 'aco', 'prata', 'mithril'];
 const EXTRAS = ['carvao', 'madeira', 'couro'];
+const WOODS = ['madeira', 'freixo', 'carvalho', 'nogueira', 'ebano'];
+// cabos torneados na marcenaria: perfil = [posição 0..1, raio em px] (o tarugo bruto tem raio 18)
+const CABO = {
+  curto: { name: 'Empunhadura', wood: 1, uso: 'faca, espada e katana', pts: [[0, 12], [0.1, 12], [0.14, 8], [0.32, 10], [0.5, 11], [0.68, 10], [0.84, 8], [0.88, 13], [1, 13]] },
+  longo: { name: 'Cabo longo', wood: 1, uso: 'enxada, picareta, machado e martelo', pts: [[0, 9], [0.55, 8], [0.78, 9], [0.86, 12], [0.94, 12], [1, 10]] },
+  haste: { name: 'Haste de lança', wood: 2, uso: 'lança', pts: [[0, 11], [0.06, 11], [0.09, 7], [0.5, 8], [0.9, 7], [0.93, 10], [1, 10]] },
+};
+const ESTILO = {
+  classico: { name: 'Clássico', desc: 'Guarda reta e pomo de disco. Peças no ritmo normal.', val: 1, sp: 1 },
+  nobre: { name: 'Nobre', desc: 'Guarda curva e pomo de roda. +10% de valor; as peças correm 25% mais rápido.', val: 1.1, sp: 1.25 },
+  real: { name: 'Real', desc: 'Guarda em anel e pomo de pera. +20% de valor; as peças correm 50% mais rápido.', val: 1.2, sp: 1.5 },
+};
 
 const STEP = {
   heat: { name: 'Aquecer', st: 'fornalha', icon: 'chama' },
   hammer: { name: 'Martelar', st: 'bigorna', icon: 'forja' },
   quench: { name: 'Temperar', st: 'tanque', icon: 'agua' },
   sharpen: { name: 'Afiar', st: 'rebolo', icon: 'rebolo' },
+  assemble: { name: 'Montar', st: 'mesa', icon: 'madeira' },
   finish: { name: 'Finalizar', st: 'bancada', icon: 'brilho' },
 };
 const S_H = ['heat', 'hammer', 'finish'], S_HQ = ['heat', 'hammer', 'quench', 'finish'], S_HQS = ['heat', 'hammer', 'quench', 'sharpen', 'finish'];
+const A_HQ = ['heat', 'hammer', 'quench', 'assemble', 'finish'], A_HQS = ['heat', 'hammer', 'quench', 'sharpen', 'assemble', 'finish'];
 const RECIPES = {
   pregos: { name: 'Pregos', cat: 'Ferramenta', icon: 'pregos', metal: 1, extra: {}, steps: S_H, bpm: 88, pat: 'TIC . TIC . TIC . TIC . TIC . TIC . TIC . TIC .', base: 16, req: {} },
   ferradura: { name: 'Ferradura', cat: 'Ferramenta', icon: 'ferradura', metal: 1, extra: {}, steps: S_HQ, bpm: 92, pat: 'TUM . . TA TUM . . TA TUM . TUM . TA . . .', base: 28, req: {} },
-  enxada: { name: 'Enxada', cat: 'Ferramenta', icon: 'enxada', metal: 1, extra: { madeira: 1 }, steps: S_HQ, bpm: 94, pat: 'PAH . SHACK . PAH . SHACK . PAH . SHACK . PAH . SHACK .', base: 42, req: {} },
-  picareta: { name: 'Picareta', cat: 'Ferramenta', icon: 'picareta', metal: 2, extra: { madeira: 1 }, steps: S_HQ, bpm: 100, pat: 'TUM TUM TUM . TA . . . TUM TUM TUM . TA . . .', base: 64, req: { rep: 10 } },
-  faca: { name: 'Faca de Caça', cat: 'Arma', icon: 'faca', metal: 1, extra: { couro: 1 }, steps: S_HQS, bpm: 104, pat: 'TIC . TA . TIC TIC TA . TIC . TA . TIC TIC TA .', base: 54, req: { upg: 'rebolo' } },
-  lanca: { name: 'Lança', cat: 'Arma', icon: 'lanca', metal: 1, extra: { madeira: 2 }, steps: S_HQS, bpm: 98, pat: 'TA . TUM . TA . TUM . TA TA TUM . TA . TUM .', base: 72, req: { upg: 'rebolo', rep: 15 } },
-  machado: { name: 'Machado', cat: 'Arma', icon: 'machado', metal: 2, extra: { madeira: 1 }, steps: S_HQS, bpm: 90, pat: 'BUM . . . HA . BUM . BUM . . . HA . HA .', base: 84, req: { upg: 'rebolo', rep: 20 } },
+  enxada: { name: 'Enxada', cat: 'Ferramenta', icon: 'enxada', metal: 1, extra: {}, cabo: 'longo', steps: A_HQ, bpm: 94, pat: 'PAH . SHACK . PAH . SHACK . PAH . SHACK . PAH . SHACK .', base: 42, req: {} },
+  picareta: { name: 'Picareta', cat: 'Ferramenta', icon: 'picareta', metal: 2, extra: {}, cabo: 'longo', steps: A_HQ, bpm: 100, pat: 'TUM TUM TUM . TA . . . TUM TUM TUM . TA . . .', base: 64, req: { rep: 10 } },
+  faca: { name: 'Faca de Caça', cat: 'Arma', icon: 'faca', metal: 1, extra: { couro: 1 }, cabo: 'curto', guarda: 1, steps: A_HQS, bpm: 104, pat: 'TIC . TA . TIC TIC TA . TIC . TA . TIC TIC TA .', base: 54, req: { upg: 'rebolo' } },
+  lanca: { name: 'Lança', cat: 'Arma', icon: 'lanca', metal: 1, extra: {}, cabo: 'haste', steps: A_HQS, bpm: 98, pat: 'TA . TUM . TA . TUM . TA TA TUM . TA . TUM .', base: 72, req: { upg: 'rebolo', rep: 15 } },
+  machado: { name: 'Machado', cat: 'Arma', icon: 'machado', metal: 2, extra: {}, cabo: 'longo', steps: A_HQS, bpm: 90, pat: 'BUM . . . HA . BUM . BUM . . . HA . HA .', base: 84, req: { upg: 'rebolo', rep: 20 } },
   escudo: { name: 'Escudo', cat: 'Armadura', icon: 'escudo', metal: 2, extra: { madeira: 2 }, steps: S_H, bpm: 84, pat: 'BUM . BUM . . . BUM . BUM . BUM . . . DON .', base: 98, req: { rep: 25 } },
-  espada: { name: 'Espada Longa', cat: 'Arma', icon: 'espada', metal: 2, extra: { couro: 1 }, steps: S_HQS, bpm: 110, pat: 'CLAM . CLAM TA . . CLAM . CLAM . CLAM TA . . FORJA .', loops: 2, base: 125, req: { upg: 'bigorna', rep: 30 } },
+  espada: { name: 'Espada Longa', cat: 'Arma', icon: 'espada', metal: 2, extra: { couro: 1 }, cabo: 'curto', guarda: 1, steps: A_HQS, bpm: 110, pat: 'CLAM . CLAM TA . . CLAM . CLAM . CLAM TA . . FORJA .', loops: 2, base: 125, req: { upg: 'bigorna', rep: 30 } },
   elmo: { name: 'Elmo', cat: 'Armadura', icon: 'elmo', metal: 3, extra: { couro: 1 }, steps: S_HQ, bpm: 98, pat: 'DON . . TA DON . . TA DON . TA . DON . TA .', loops: 2, base: 150, req: { upg: 'bigorna', rep: 45 } },
-  martelo: { name: 'Martelo de Guerra', cat: 'Arma', icon: 'martelo', metal: 3, extra: { madeira: 1 }, steps: S_HQ, bpm: 86, pat: 'BUM . . BUM . . BUM . BUM BUM . . HA . . .', loops: 2, base: 168, req: { rep: 60 } },
-  katana: { name: 'Katana', cat: 'Arma', icon: 'katana', metal: 3, extra: { couro: 1 }, steps: S_HQS, bpm: 116, pat: 'HA . TA TA HA . TA . HA TA . TA HA . FORJA .', loops: 2, base: 300, req: { flag: 'katana' } },
+  martelo: { name: 'Martelo de Guerra', cat: 'Arma', icon: 'martelo', metal: 3, extra: {}, cabo: 'longo', steps: A_HQ, bpm: 86, pat: 'BUM . . BUM . . BUM . BUM BUM . . HA . . .', loops: 2, base: 168, req: { rep: 60 } },
+  katana: { name: 'Katana', cat: 'Arma', icon: 'katana', metal: 3, extra: { couro: 1 }, cabo: 'curto', guarda: 1, steps: A_HQS, bpm: 116, pat: 'HA . TA TA HA . TA . HA TA . TA HA . FORJA .', loops: 2, base: 300, req: { flag: 'katana' } },
   // trabalhos especiais (não aparecem no livro)
   reparo: { name: 'Reparo', cat: 'Serviço', icon: 'espada', metal: 0, extra: {}, steps: ['heat', 'hammer', 'finish'], bpm: 96, pat: 'TIC . TA . TIC . TA . TIC TIC TA . TIC . FORJA .', base: 0, special: true },
   tenkai: { name: 'Tenkai', cat: 'Lâmina lendária', icon: 'katana', metal: 0, extra: {}, steps: ['sharpen', 'finish'], bpm: 100, pat: '', base: 0, special: true },
@@ -1486,6 +1510,8 @@ const TIPS = [
   'Durma para avançar o dia. O jogo salva automaticamente ao dormir.',
   'Cada metal tem sua própria zona de calor. O aço exige fogo alto.',
   'Você pode pausar uma peça a qualquer momento e voltar a ela depois.',
+  'A porta no fundo da forja leva à Marcenaria: lá o Torno faz os cabos e a Mesa de Montagem junta as peças na planta.',
+  'Madeiras nobres valorizam a peça, mas são mais difíceis de tornear.',
 ];
 
 'use strict';
@@ -1495,7 +1521,7 @@ const TIPS = [
 const W = 400, H = 240;
 const cv = document.getElementById('game'), g = cv.getContext('2d');
 g.imageSmoothingEnabled = false;
-let S = null, mode = 'title', T = 0;
+let S = null, mode = 'title', T = 0, room = 'forja';
 const keys = {};
 const P = { x: 190, y: 112, dir: 'down', f: 0, ft: 0, moving: false, target: null, stuck: 0 };
 let customers = [], parts = [], floats = [], shake = 0, BG = null, bgKey = '', spawnT = 5, playerSpr = null;
@@ -1509,7 +1535,7 @@ const SET = Object.assign({ music: 0.55, sfx: 0.8, offset: 0, shake: true, scale
 function newState(slot, name, look) {
   return {
     v: 1, slot, name, look, day: 1, time: 0, gold: 120, rep: 0, xp: 0, level: 1, sp: 1,
-    mats: { carvao: 8, madeira: 4, couro: 2, ferro: 5, bronze: 2, aco: 0, prata: 0, mithril: 0 },
+    mats: { carvao: 8, madeira: 4, freixo: 2, carvalho: 0, nogueira: 0, ebano: 0, couro: 2, ferro: 5, bronze: 2, aco: 0, prata: 0, mithril: 0 }, cabos: [],
     items: [], wip: null, orders: [], upg: [], skills: [], flags: {}, pages: 0, chapter: 1,
     stats: { forged: 0, served: 0, slept: 0, ordersDone: 0, excellent: 0, legendary: 0, sold: 0, earned: 0, best: 0 },
     clients: {}, event: null, spawnLeft: 3, visitQueue: [], uid: 1, today: { gold: 0, rep: 0, forged: 0 }, playtime: 0,
@@ -1524,6 +1550,7 @@ function saveGame(silent) {
 function slotInfo(n) { const s = LS.get('forja_slot_' + n, null); return s && s.v ? s : null; }
 function startGame(state, fresh) {
   S = state; mode = 'play'; customers = []; parts = []; floats = [];
+  S.cabos = S.cabos || []; room = 'forja';
   P.x = 190; P.y = 112; P.dir = 'down'; P.target = null;
   playerSpr = charSprites('player' + JSON.stringify(S.look), playerLook());
   bgKey = ''; spawnT = 4;
@@ -1604,7 +1631,7 @@ function startCraft(r, m, orderId) {
   UI.hud(); return true;
 }
 function discardWip() { if (!S.wip) return; const o = S.wip.order; S.wip = null; if (o) { } UI.toast('A peça foi descartada. Os materiais se perderam.', 'forja'); UI.hud(); }
-const stationName = st => ({ fornalha: 'Fornalha', bigorna: 'Bigorna', tanque: 'Tanque', rebolo: 'Rebolo', bancada: 'Bancada' })[st];
+const stationName = st => ({ fornalha: 'Fornalha', bigorna: 'Bigorna', tanque: 'Tanque', rebolo: 'Rebolo', bancada: 'Bancada', mesa: 'Mesa de Montagem (Marcenaria)' })[st];
 function nextStep() { return S.wip ? RECIPES[S.wip.r].steps[S.wip.step] : null; }
 function stationUse(st) {
   const w = S.wip;
@@ -1621,7 +1648,40 @@ function stationUse(st) {
     if (S.mats.carvao < 1) { UI.toast('Sem carvão! Compre no Estoque (Fornecedor).', 'carvao'); return; }
     if (!(sk('c2') && rand() < 0.35)) S.mats.carvao--; else UI.toast('Fôlego de Fole: nenhum carvão gasto.', 'chama');
   }
+  if (step === 'assemble') return montar(w);
   MINI.start(step, w);
+}
+// ---------------------------------------------------------------------------
+// MARCENARIA: torno (faz cabos) e mesa de montagem (planta)
+// ---------------------------------------------------------------------------
+const CANCELAR = { id: 'x', t: 'Cancelar', d: 'Voltar.', ok: true };
+const caboNome = c => CABO[c.t].name + ' de ' + MATS[c.w].name;
+function tornear() {
+  UI.assembly(Object.entries(CABO).map(([k, c]) => ({ id: k, t: c.name, d: 'Para ' + c.uso + '. Gasta ' + c.wood + ' madeira. Prontos: ' + S.cabos.filter(x => x.t === k).length + '.', ok: true })).concat([CANCELAR]), tp => {
+    if (tp === 'x') return;
+    UI.assembly(WOODS.map(k => ({ id: k, t: MATS[k].name + ' (tem ' + (S.mats[k] || 0) + ')', d: reqOK(MATS[k].req) ? MATS[k].desc : 'Requer: ' + reqText(MATS[k].req), ok: reqOK(MATS[k].req) && (S.mats[k] || 0) >= CABO[tp].wood })).concat([CANCELAR]), wd => {
+      if (wd === 'x') return;
+      S.mats[wd] -= CABO[tp].wood; UI.hud();
+      MINI.start('torno', { torno: { t: tp, w: wd }, titulo: 'Torno — ' + CABO[tp].name + ' de ' + MATS[wd].name });
+    }, 'Qual madeira? (compre mais na Pilha de Madeiras)');
+  }, 'Torno: o que tornear?');
+}
+function caboPronto(tc, q) {
+  const c = { id: S.uid++, t: tc.t, w: tc.w, q }; S.cabos.push(c); addXP(4);
+  UI.toast(caboNome(c) + ' pronto: acabamento ' + Math.round(q * 100) + '%. Use na Mesa de Montagem.', 'madeira'); UI.hud(); saveGame(true);
+}
+function montar(w) {
+  const R = RECIPES[w.r], cs = S.cabos.filter(c => c.t === R.cabo).sort((a, b) => b.q - a.q);
+  if (!cs.length) { UI.toast('Falta ' + CABO[R.cabo].name + '. Faça um no Torno, aqui na Marcenaria.', 'madeira'); return; }
+  UI.assembly(cs.map(c => ({ id: String(c.id), t: caboNome(c), d: 'Acabamento ' + Math.round(c.q * 100) + '% · valor da peça ×' + MATS[c.w].val, ok: true })).concat([CANCELAR]), id => {
+    if (id === 'x') return;
+    const c = S.cabos.find(k => String(k.id) === id);
+    if (!R.guarda) { w.monta = { c: c.id, est: 'classico' }; return MINI.start('assemble', w); }
+    UI.assembly(Object.entries(ESTILO).map(([k, e]) => ({ id: k, t: e.name, d: e.desc, ok: true })).concat([CANCELAR]), est => {
+      if (est === 'x') return;
+      w.monta = { c: c.id, est }; MINI.start('assemble', w);
+    }, 'Estilo da guarda e do pomo');
+  }, 'Escolha o cabo para a planta');
 }
 // chamado pelo minigame ao concluir uma etapa
 function stepDone(step, score, extra) {
@@ -1639,9 +1699,10 @@ function stepDone(step, score, extra) {
 }
 // cálculo final de qualidade/raridade/valor (antes da revelação)
 function computeResult(bonus, assembly) {
-  const w = S.wip, R = RECIPES[w.r], WGT = { heat: 0.22, hammer: 0.4, quench: 0.18, sharpen: 0.2 };
+  const w = S.wip, R = RECIPES[w.r], WGT = { heat: 0.22, hammer: 0.4, quench: 0.18, sharpen: 0.2, assemble: 0.15 };
   let tw = 0, s = 0;
   R.steps.forEach(st => { if (WGT[st] !== undefined) { tw += WGT[st]; s += WGT[st] * (w.sc[st] ?? 0.5); } });
+  if (w.sc.cabo !== undefined) { tw += 0.1; s += 0.1 * w.sc.cabo; }
   let score = tw ? s / tw : 0.7;
   score += bonus;
   if (sk('r3')) score += 0.05;
@@ -1656,8 +1717,8 @@ function computeResult(bonus, assembly) {
     const lm = (sk('f3') ? 2.5 : 1) * (qi >= 3 ? 2 : 1), x = rand();
     if (x < RAR[3].chance * lm) rar = 3; else if (x < RAR[2].chance * (qi >= 3 ? 1.6 : 1) + RAR[3].chance * lm) rar = 2; else if (x < 0.08 + 0.04 * qi) rar = 1;
   }
-  let value = Math.round((R.base || 0) * (w.m ? MATS[w.m].val : 1) * QUAL[qi].mult * RAR[rar].mult * (sk('a2') && ['aco', 'prata', 'mithril'].includes(w.m) ? 1.15 : 1) * (sk('f2') ? 1.2 : 1) * (assembly === 'ouro' ? 1.15 : 1));
-  const it = { id: S.uid++, r: w.r, m: w.m, score, qi, rar, value, rune: sk('f2'), day: S.day, name: itemName(w.r, w.m) };
+  let value = Math.round((R.base || 0) * (w.m ? MATS[w.m].val : 1) * QUAL[qi].mult * RAR[rar].mult * (sk('a2') && ['aco', 'prata', 'mithril'].includes(w.m) ? 1.15 : 1) * (sk('f2') ? 1.2 : 1) * (assembly === 'ouro' ? 1.15 : 1) * (w.wood ? MATS[w.wood].val : 1) * (w.estilo ? ESTILO[w.estilo].val : 1));
+  const it = { id: S.uid++, r: w.r, m: w.m, score, qi, rar, value, rune: sk('f2'), day: S.day, name: itemName(w.r, w.m), wood: w.wood };
   if (rar === 3) it.title = pick(LEG_N) + ' ' + pick(LEG_A);
   return it;
 }
@@ -1886,6 +1947,7 @@ const timeLabel = t => t < 0.3 ? 'Manhã' : t < 0.6 ? 'Tarde' : t < 0.88 ? 'Enta
 // MUNDO: colisões, zonas, desenho
 // ---------------------------------------------------------------------------
 function colliders() {
+  if (room === 'marc') return [[16, 60, 64, 34], [214, 62, 88, 12], [30, 166, 108, 16], [222, 128, 108, 18], [168, 196, 48, 10], [350, 192, 18, 12], [356, 76, 18, 12]];
   const c = [[16, 60, 64, 34], [84, 82, 18, 14], [86, 118, 26, 14], [18, 152, 32, 18], [18, 202, 26, 10], [144, 66, 64, 16], [208, 66, 52, 16], [288, 66, 50, 12], [244, 134, 140, 20], [362, 194, 16, 10], [226, 210, 14, 8], [100, 212, 14, 7]];
   if (has('rebolo')) c.push([66, 190, 26, 12]);
   return c;
@@ -1901,14 +1963,24 @@ const ZONES = [
   { id: 'vitrine', x: 288, y: 62, w: 50, h: 30, label: 'Expositor', act: 'Peças prontas' },
   { id: 'quarto', x: 338, y: 62, w: 40, h: 30, label: 'Quarto', act: 'Dormir e encerrar o dia' },
   { id: 'balcao', x: 240, y: 106, w: 146, h: 30, label: 'Balcão', act: 'Atender' },
+  { id: 'porta', x: 146, y: 198, w: 44, h: 26, label: 'Marcenaria', act: 'Ir para a marcenaria', mk: [168, 192] },
+  { id: 'porta', room: 'marc', x: 154, y: 66, w: 46, h: 24, label: 'Forja', act: 'Voltar para a forja', mk: [177, 28] },
+  { id: 'madeiras', room: 'marc', x: 14, y: 90, w: 74, h: 26, label: 'Pilha de Madeiras', act: 'Comprar madeira' },
+  { id: 'torno', room: 'marc', x: 22, y: 128, w: 124, h: 36, label: 'Torno', act: 'Tornear um cabo', mk: [84, 132] },
+  { id: 'mesa', room: 'marc', x: 214, y: 96, w: 124, h: 76, label: 'Mesa de Montagem', act: 'Montar a peça na planta', mk: [276, 92] },
 ];
+const zones = () => ZONES.filter(z => (z.room || 'forja') === room);
+function trocarSala() {
+  room = room === 'forja' ? 'marc' : 'forja'; SND.fx.door();
+  P.x = 177; P.y = room === 'marc' ? 84 : 210; P.dir = room === 'marc' ? 'down' : 'up'; P.target = null; parts = [];
+}
 function blocked(x, y) {
   if (x < 20 || x > 380 || y < 68 || y > 222) return true;
   return colliders().some(([cx, cy, cw, ch]) => x + 5 > cx && x - 5 < cx + cw && y > cy && y - 3 < cy + ch);
 }
 function nearZone() {
   let best = null, bd = 1e9;
-  ZONES.forEach(z => {
+  zones().forEach(z => {
     if (z.need && !has(z.need)) return;
     if (P.x >= z.x && P.x <= z.x + z.w && P.y >= z.y && P.y <= z.y + z.h) { const d = Math.hypot(P.x - (z.x + z.w / 2), P.y - (z.y + z.h / 2)); if (d < bd) { bd = d; best = z; } }
   });
@@ -1917,7 +1989,10 @@ function nearZone() {
 function interact(z) {
   z = z || nearZone(); if (!z) return;
   SND.fx.click();
-  if (['fornalha', 'bigorna', 'tanque', 'rebolo', 'bancada'].includes(z.id)) return stationUse(z.id);
+  if (z.id === 'porta') return trocarSala();
+  if (z.id === 'madeiras') return UI.panel('estoque', 'mats');
+  if (z.id === 'torno') return tornear();
+  if (['fornalha', 'bigorna', 'tanque', 'rebolo', 'bancada', 'mesa'].includes(z.id)) return stationUse(z.id);
   if (z.id === 'estoque') return UI.panel('estoque', 'mats');
   if (z.id === 'vitrine') return UI.panel('estoque', 'pecas');
   if (z.id === 'quadro') return UI.panel('pedidos');
@@ -1949,6 +2024,10 @@ function buildBG() {
   x.fillStyle = 'rgba(0,0,0,0.3)'; x.fillRect(16, 64, 4, 160); x.fillRect(380, 64, 4, 160);
   d.r(0, 224, W, 16, '#0d0808'); d.r(12, 222, 376, 3, PAL.stone[3]); d.hl(12, 222, 376, PAL.stone[4]);
   d.r(304, 222, 32, 18, '#5b4a36'); d.noise(304, 222, 32, 18, ['#6e5b44', '#4a3b2b', '#7d6a50'], 0.4, 3); d.r(300, 216, 4, 24, PAL.wood[3]); d.r(336, 216, 4, 24, PAL.wood[3]); d.vl(300, 216, 24, PAL.wood[5]);
+  // porta dos fundos para a marcenaria
+  d.r(152, 222, 32, 18, MFLOOR[3]); for (let k = 0; k < 4; k++) d.hl(152, 226 + k * 4, 32, MFLOOR[1]); d.noise(152, 222, 32, 18, ['#8e6c44', '#6e5234'], 0.12, 7);
+  d.r(148, 216, 4, 24, PAL.wood[3]); d.r(184, 216, 4, 24, PAL.wood[3]); d.vl(148, 216, 24, PAL.wood[5]); d.vl(184, 216, 24, PAL.wood[5]);
+  d.r(157, 229, 22, 8, PAL.wood[4]); d.hl(157, 229, 22, PAL.wood[6]); d.poly([[160, 231], [171, 231], [171, 235], [162, 235]], PAL.iron[4]); d.r(171, 231, 4, 4, PAL.wood[2]);
   // decoração de parede
   blit(x, ART.toolrack, 90, 22); blit(x, ART.shelf, 152, 20); blit(x, ART.board, 256, 24); blit(x, ART.door, 342, 16);
   blit(x, ART.lantern, 140, 24); blit(x, ART.lantern, 374, 24);
@@ -2022,6 +2101,7 @@ function arrow(x, y, t) {
   g.fillStyle = PAL.gold[4]; g.fillRect(x - 3, y - 5 + b, 7, 2); g.fillRect(x - 2, y - 3 + b, 5, 2); g.fillRect(x - 1, y - 1 + b, 3, 2); g.fillStyle = PAL.gold[5]; g.fillRect(x - 3, y - 5 + b, 7, 1);
 }
 function drawWorld(t, opt = {}) {
+  if (S && room === 'marc' && mode !== 'title') return drawMarc(t, opt);
   const key = S ? S.upg.join() : 'x';
   if (!BG || bgKey !== key) { BG = buildBG(); bgKey = key; }
   g.drawImage(BG, 0, 0);
@@ -2068,13 +2148,124 @@ function drawWorld(t, opt = {}) {
   lighting(lights, opt.dark ?? (0.5 + clamp((tm - 0.6) / 0.35, 0, 1) * 0.22));
   if (!S || mode === 'title') return;
   // marcadores
-  if (S.wip && !UI.blocking()) { const z = ZONES.find(z => z.id === STEP[nextStep()].st); if (z && z.mk) arrow(z.mk[0], z.mk[1], t); }
+  if (S.wip && !UI.blocking()) { const z = zones().find(z => z.id === STEP[nextStep()].st) || zones().find(z => z.id === 'porta'); if (z && z.mk) arrow(z.mk[0], z.mk[1], t); }
   customers.forEach(c => {
     if (c.state !== 'wait') return;
     const low = !c.npc && c.pat < c.maxPat * 0.3;
     bubble(Math.round(c.x), Math.round(c.y) - 30, c.req.type === 'buy' ? 'moeda' : c.req.type === 'merchant' ? 'bau' : c.req.type === 'story' ? 'livro' : c.req.type === 'repair' ? 'forja' : 'pedidos', low && Math.floor(t * 4) % 2 ? PAL.red[4] : null);
     if (!c.npc) { g.fillStyle = PAL.ink; g.fillRect(Math.round(c.x) - 7, Math.round(c.y) - 41, 15, 3); g.fillStyle = low ? PAL.red[4] : PAL.green[4]; g.fillRect(Math.round(c.x) - 6, Math.round(c.y) - 40, Math.round(13 * c.pat / c.maxPat), 1); }
   });
+  const z = nearZone();
+  if (z && !UI.blocking()) { const k = pxText('E', PAL.ink, null); g.fillStyle = PAL.parch[4]; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 36, 9, 10); g.fillStyle = PAL.ink; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 27, 9, 1); g.drawImage(k, Math.round(P.x) - 2, Math.round(P.y) - 36); }
+  drawFloats();
+}
+
+// ---------------------------------------------------------------------------
+// MARCENARIA: sala atrás da porta do fundo da forja
+// ---------------------------------------------------------------------------
+const MFLOOR = ['#1c120a', '#2e1e12', '#3f2a19', '#4d3420', '#5c3f27', '#6b4a2e'];
+const BP = { bg: '#1d4778', grid: '#285a92', line: '#d8ecff', dim: '#8fb6e0' };
+let MBG = null, MSPR = null;
+function marcSprites() {
+  if (MSPR) return MSPR;
+  const Wd = PAL.wood, Ir = PAL.iron;
+  MSPR = {
+    torno: spr(112, 46, d => {
+      d.circ(18, 36, 8, Ir[2]); d.circ(18, 36, 6, Wd[1]); d.circ(18, 36, 2, Ir[4]); d.line(18, 36, 24, 31, Ir[3]);
+      d.r(6, 28, 6, 18, Wd[2]); d.vl(6, 28, 18, Wd[4]); d.r(98, 28, 6, 18, Wd[2]); d.vl(98, 28, 18, Wd[4]); d.r(8, 40, 94, 3, Wd[2]); d.hl(8, 40, 94, Wd[3]);
+      d.r(2, 24, 108, 6, Ir[2]); d.hl(2, 24, 108, Ir[4]); d.hl(2, 29, 108, Ir[1]);
+      d.r(2, 4, 22, 20, Wd[3]); d.hl(2, 4, 22, Wd[5]); d.vl(23, 4, 20, Wd[1]); d.band(2, 10, 22, 2, false);
+      d.circ(12, 14, 6, Ir[2]); d.circ(12, 14, 4, Ir[3]); d.circ(12, 14, 1, Ir[5]); d.line(12, 14, 18, 30, PAL.leather[2]);
+      d.r(24, 13, 4, 6, Ir[4]); d.r(90, 13, 4, 6, Ir[4]);
+      d.r(94, 8, 14, 16, Ir[2]); d.hl(94, 8, 14, Ir[4]); d.vl(107, 8, 16, Ir[1]); d.r(108, 13, 3, 6, Ir[3]);
+      d.r(40, 21, 40, 2, Ir[3]); d.hl(40, 21, 40, Ir[5]); d.r(58, 23, 3, 2, Ir[2]);
+    }),
+    mesa: spr(112, 46, d => {
+      d.r(4, 34, 6, 12, Wd[2]); d.r(102, 34, 6, 12, Wd[2]); d.vl(4, 34, 12, Wd[4]); d.vl(102, 34, 12, Wd[4]);
+      d.r(0, 2, 112, 28, Wd[4]); for (let x = 14; x < 112; x += 16) d.vl(x, 2, 28, Wd[3]); d.hl(0, 2, 112, Wd[6]);
+      d.r(0, 30, 112, 6, Wd[2]); d.hl(0, 30, 112, Wd[3]); d.hl(0, 35, 112, Wd[1]);
+      d.r(10, 5, 90, 22, BP.bg); for (let x = 2; x < 90; x += 4) d.vl(10 + x, 5, 22, BP.grid); for (let y = 2; y < 22; y += 4) d.hl(10, 5 + y, 90, BP.grid);
+      d.hl(24, 14, 54, BP.line); d.hl(24, 18, 54, BP.line); d.line(78, 14, 86, 16, BP.line); d.line(78, 18, 86, 16, BP.line);
+      d.vl(22, 10, 13, BP.line); d.r(14, 15, 8, 3, BP.dim); d.circ(12, 16, 2, BP.line); d.hl(24, 24, 54, BP.dim); d.vl(24, 23, 3, BP.dim); d.vl(77, 23, 3, BP.dim);
+      [[11, 6], [98, 6], [11, 25], [98, 25]].forEach(([x, y]) => d.p(x, y, PAL.red[4]));
+      d.r(72, 27, 14, 1, PAL.gold[3]); d.p(86, 27, PAL.ink); d.r(102, 6, 2, 18, Ir[4]); d.r(102, 22, 8, 2, Ir[4]); d.circ(106, 10, 2, Ir[4]); d.p(105, 9, Ir[6]);
+    }),
+    cavalete: spr(52, 26, d => {
+      [4, 40].forEach(x => { d.line(x, 26, x + 4, 8, Wd[2]); d.line(x + 1, 26, x + 5, 8, Wd[3]); d.line(x + 8, 26, x + 4, 8, Wd[2]); });
+      d.r(0, 8, 52, 5, Wd[5]); d.hl(0, 8, 52, Wd[6]); d.hl(0, 12, 52, Wd[3]); d.vl(26, 8, 5, Wd[2]);
+      d.poly([[24, 0], [36, 2], [35, 9], [24, 9]], Ir[4]); d.hl(24, 0, 10, Ir[6]); d.r(36, 0, 5, 6, Wd[3]); d.r(37, 2, 2, 2, Wd[1]);
+    }),
+  };
+  return MSPR;
+}
+function buildMarcBG() {
+  const c = canvasOf(W, H), x = c.getContext('2d'), d = new Pix(x), R = rng(47);
+  d.planks(16, 64, 368, 160, MFLOOR, 8, 41);
+  d.noise(16, 64, 368, 160, ['#7a5a38', '#8e6c44', '#5e4630'], 0.025, 43);
+  [[84, 194, 44, 9], [192, 212, 24, 6], [276, 160, 36, 7], [240, 70, 30, 5]].forEach(([cx, cy, rx, ry]) => { for (let k = 0; k < rx * ry * 1.4; k++) { const a = R() * 6.283, rr = Math.sqrt(R()); d.p(cx + Math.cos(a) * rx * rr, cy + Math.sin(a) * ry * rr, ['#a07c50', '#8a6a44', '#c09a66', '#6e5234'][Math.floor(R() * 4)]); } });
+  for (let i = 0; i < 14; i++) { const cx = 40 + R() * 300, cy = 90 + R() * 120; d.p(cx, cy, '#c8a070'); d.p(cx + 1, cy, '#a07c50'); d.p(cx + 1, cy + 1, '#c8a070'); }
+  // parede de tábuas, rodapé e sombra
+  d.vplanks(16, 16, 368, 48, ['#120a05', '#1e1209', '#2a190d', '#352011', '#432a17'], 9, 45);
+  d.r(16, 30, 368, 3, PAL.wood[2]); d.hl(16, 30, 368, PAL.wood[3]);
+  d.r(16, 58, 368, 6, PAL.wood[1]); d.hl(16, 58, 368, PAL.wood[3]);
+  x.fillStyle = 'rgba(0,0,0,0.35)'; x.fillRect(16, 64, 368, 5); x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(16, 69, 368, 4);
+  d.r(0, 0, W, 16, '#0d0808'); d.r(0, 11, W, 5, PAL.wood[2]); d.hl(0, 11, W, PAL.wood[4]); d.hl(0, 15, W, PAL.wood[1]);
+  for (let i = 8; i < W; i += 48) { d.r(i, 0, 6, 16, PAL.wood[2]); d.vl(i, 0, 16, PAL.wood[3]); }
+  [[0, 16], [384, 16]].forEach(([xx, yy], k) => { d.r(xx, yy, 16, 224, '#0d0808'); d.r(k ? 384 : 12, 16, 4, 208, PAL.wood[2]); d.vl(k ? 384 : 15, 16, 208, PAL.wood[k ? 4 : 1]); });
+  x.fillStyle = 'rgba(0,0,0,0.3)'; x.fillRect(16, 64, 4, 160); x.fillRect(380, 64, 4, 160);
+  d.r(0, 224, W, 16, '#0d0808'); d.r(12, 222, 376, 3, PAL.wood[2]); d.hl(12, 222, 376, PAL.wood[4]);
+  // estante de toras (as toras são desenhadas conforme o estoque)
+  d.r(20, 30, 4, 66, PAL.wood[3]); d.vl(20, 30, 66, PAL.wood[5]); d.r(76, 30, 4, 66, PAL.wood[3]); d.vl(79, 30, 66, PAL.wood[1]);
+  d.r(24, 32, 52, 62, '#140b06'); [48, 66, 84].forEach(y => { d.r(20, y, 60, 3, PAL.wood[4]); d.hl(20, y, 60, PAL.wood[6]); d.hl(20, y + 2, 60, PAL.wood[2]); });
+  d.r(18, 92, 64, 4, PAL.wood[2]);
+  // painel de cabos prontos
+  d.r(96, 22, 52, 3, PAL.wood[4]); d.hl(96, 22, 52, PAL.wood[6]); for (let i = 0; i < 8; i++) d.r(99 + i * 6, 25, 1, 2, PAL.iron[4]);
+  // porta de volta para a forja, lampiões
+  blit(x, ART.door, 162, 16); blit(x, ART.lantern, 150, 26); blit(x, ART.lantern, 196, 26);
+  // ferramentas na parede: serrote, serra de arco, formões, esquadro
+  d.poly([[218, 21], [244, 24], [244, 30], [218, 34]], PAL.iron[4]); d.hl(219, 21, 24, PAL.iron[6]); for (let i = 0; i < 13; i++) d.p(219 + i * 2, 34 - Math.round(i * 0.3), PAL.iron[2]);
+  d.r(244, 22, 7, 10, PAL.wood[4]); d.r(246, 25, 3, 4, '#140b06');
+  d.r(256, 19, 2, 18, PAL.wood[4]); d.r(280, 19, 2, 18, PAL.wood[4]); d.r(256, 27, 26, 2, PAL.wood[3]); d.hl(258, 36, 22, PAL.iron[5]); d.line(258, 20, 279, 20, PAL.parch[3]);
+  [288, 292, 296, 300].forEach((xx, i) => { d.r(xx, 20, 2, 6, PAL.wood[4 - (i % 2)]); d.r(xx, 26, 2, 5 + i, PAL.iron[4]); d.p(xx, 26, PAL.iron[6]); });
+  d.r(306, 20, 2, 16, PAL.iron[3]); d.r(306, 34, 12, 2, PAL.iron[3]); d.vl(306, 20, 16, PAL.iron[5]);
+  // bancada de carpinteiro com morsa e plaina
+  d.r(214, 44, 88, 10, PAL.wood[4]); d.hl(214, 44, 88, PAL.wood[6]); d.hl(214, 53, 88, PAL.wood[2]);
+  d.r(214, 54, 88, 12, PAL.wood[3]); [222, 250, 278].forEach(xx => { d.r(xx, 57, 18, 6, PAL.wood[2]); d.hl(xx, 57, 18, PAL.wood[1]); d.r(xx + 8, 59, 3, 2, PAL.gold[3]); });
+  d.r(216, 66, 4, 8, PAL.wood[2]); d.r(296, 66, 4, 8, PAL.wood[2]);
+  d.r(205, 44, 10, 12, PAL.iron[2]); d.hl(205, 44, 10, PAL.iron[4]); d.r(200, 49, 6, 2, PAL.iron[4]); d.r(199, 46, 2, 8, PAL.iron[3]);
+  d.r(258, 40, 16, 5, PAL.wood[5]); d.hl(258, 40, 16, PAL.wood[6]); d.r(262, 37, 3, 3, PAL.wood[3]); d.r(270, 38, 3, 2, PAL.iron[4]);
+  for (let i = 0; i < 5; i++) { d.p(282 + i * 3, 42 - (i % 2), '#e0b880'); d.p(283 + i * 3, 41, '#c09a66'); }
+  return c;
+}
+function drawMarc(t, opt) {
+  if (!MBG) MBG = buildMarcBG();
+  const M = marcSprites(), d = new Pix(g);
+  g.drawImage(MBG, 0, 0);
+  const tm = S.time, day = clamp(1 - tm / 0.75, 0, 1), dusk = clamp(1 - Math.abs(tm - 0.8) / 0.15, 0, 1);
+  blit(g, ART.winNight, 334, 22); g.globalAlpha = day; blit(g, ART.winDay, 334, 22); g.globalAlpha = dusk * 0.9; blit(g, ART.winDusk, 334, 22); g.globalAlpha = 1;
+  if (day + dusk > 0.05) { g.globalCompositeOperation = 'lighter'; g.fillStyle = dusk > day ? 'rgba(255,140,60,' + (0.07 * dusk) + ')' : 'rgba(200,220,255,' + (0.07 * day) + ')'; g.beginPath(); g.moveTo(338, 38); g.lineTo(352, 38); g.lineTo(330, 132); g.lineTo(300, 132); g.closePath(); g.fill(); g.globalCompositeOperation = 'source-over'; }
+  // toras na estante conforme o estoque de cada madeira
+  let slot = 0;
+  WOODS.forEach(k => { for (let i = 0; i < Math.min(6, S.mats[k] || 0) && slot < 18; i++, slot++) { const P2 = WOODPAL[k], cx = 30 + (slot % 6) * 9, cy = 42 + Math.floor(slot / 6) * 18; d.circ(cx, cy, 4, P2[1]); d.circ(cx, cy, 3, P2[3]); d.circ(cx, cy, 1, P2[2]); d.p(cx - 1, cy - 2, P2[4]); } });
+  // cabos prontos pendurados
+  S.cabos.slice(0, 8).forEach((c, i) => { const P2 = WOODPAL[c.w], x0 = 98 + i * 6, len = c.t === 'curto' ? 14 : c.t === 'longo' ? 26 : 30; d.r(x0, 26, 3, len, P2[2]); d.vl(x0, 26, len, P2[3]); d.r(x0 - (c.t === 'curto' ? 1 : 0), 26 + len - 3, c.t === 'curto' ? 5 : 3, 3, P2[1]); });
+  const list = [
+    [188, () => { blit(g, M.torno, 28, 142); for (let k = 0; k < 3; k++) { const yy = 155 + ((Math.floor(t * 18) + k * 3) % 8); d.r(56, yy, 62, 1, PAL.wood[k ? 3 : 5]); } d.r(56, 154, 62, 1, PAL.wood[5]); }],
+    [152, () => blit(g, M.mesa, 218, 106)],
+    [208, () => blit(g, M.cavalete, 166, 184)],
+    [204, () => blit(g, ART.crate, 350, 190)],
+    [210, () => blit(g, ART.sack, 330, 204)],
+    [80, () => blit(g, ART.barrel, 356, 62)],
+    [P.y, () => drawActor(P, playerSpr)],
+  ];
+  list.sort((a, b) => a[0] - b[0]).forEach(([, f]) => f());
+  d.vl(276, 16, 76, PAL.iron[2]); blit(g, ART.lantern, 271, 90);
+  if (rand() < 0.08) parts.push({ x: 300 + rand() * 40, y: 60 + rand() * 60, vx: (rand() - 0.5) * 3, vy: 2 + rand() * 3, l: 0, m: 3 + rand() * 2, c: 'rgba(235,210,160,0.5)', s: 1, gr: 0 });
+  drawParts();
+  const fl = 1 + Math.sin(t * 9) * 0.04;
+  lighting([[276, 104, 96 * fl, 0.9, 0.06], [155, 32, 46, 0.7, 0.04], [201, 32, 46, 0.7, 0.04], [345, 38, 80 * (day + dusk * 0.6), 0.6 * (day + dusk)], [84, 160, 60, 0.5, 0.02]], opt.dark ?? (0.5 + clamp((tm - 0.6) / 0.35, 0, 1) * 0.22));
+  if (S.wip && !UI.blocking()) { const z = zones().find(z => z.id === STEP[nextStep()].st) || zones().find(z => z.id === 'porta'); if (z && z.mk) arrow(z.mk[0], z.mk[1], t); }
+  if (customers.some(c => c.state === 'wait')) { bubble(214, 60, 'cliente', Math.floor(t * 3) % 2 ? PAL.red[4] : null); }
   const z = nearZone();
   if (z && !UI.blocking()) { const k = pxText('E', PAL.ink, null); g.fillStyle = PAL.parch[4]; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 36, 9, 10); g.fillStyle = PAL.ink; g.fillRect(Math.round(P.x) - 4, Math.round(P.y) - 27, 9, 1); g.drawImage(k, Math.round(P.x) - 2, Math.round(P.y) - 36); }
   drawFloats();
@@ -2104,9 +2295,9 @@ function updatePlayer(dt) {
 }
 function clickWorld(x, y) {
   if (mode !== 'play' || UI.blocking()) return;
-  const cu = customers.find(c => c.state === 'wait' && Math.abs(c.x - x) < 9 && y > c.y - 26 && y < c.y + 2);
+  const cu = room === 'forja' && customers.find(c => c.state === 'wait' && Math.abs(c.x - x) < 9 && y > c.y - 26 && y < c.y + 2);
   if (cu) { const zz = ZONES.find(z => z.id === 'balcao'); P.target = { x: clamp(cu.x, 250, 378), y: 122, z: zz, c: cu }; return; }
-  const z = ZONES.find(z => (!z.need || has(z.need)) && x >= z.x - 6 && x <= z.x + z.w + 6 && y >= z.y - 40 && y <= z.y + z.h);
+  const z = zones().find(z => (!z.need || has(z.need)) && x >= z.x - 6 && x <= z.x + z.w + 6 && y >= z.y - 40 && y <= z.y + z.h);
   if (z) { const tx = clamp(x, z.x + 4, z.x + z.w - 4), ty = z.y + z.h / 2; P.target = { x: tx, y: ty, z }; return; }
   P.target = { x: clamp(x, 22, 378), y: clamp(y, 70, 220) };
 }
@@ -2187,6 +2378,8 @@ const MINI = (() => {
     hammer: 'Partitura em Ré menor: W/↑ DÓ · D/→ LÁ · A/← FÁ · S/↓ RÉ · ESPAÇO = virar a peça · segure as notas longas · 8 seguidos = Fúria',
     quench: 'ESPAÇO/clique: 1) mergulhe no vermelho-cereja · 2) agite quando o anel fechar · 3) tire quando o vapor entrar na faixa dourada',
     sharpen: 'Segure ESPAÇO/clique para pressionar (a ponta pede mão leve) · fique na faixa dourada · F/clique direito: molhar a lâmina quando superaquecer',
+    torno: 'Segure ESPAÇO/clique para afundar o formão, solte para recuar · siga o gabarito (verde = no ponto) · o que foi cortado não volta · 2 passadas',
+    assemble: 'ESPAÇO/clique quando a peça passar exatamente pela marca dourada · cada encaixe torto fica torto na peça',
     finish: 'ESPAÇO/clique quando cada anel encontrar o círculo dourado: 3 golpes, cada um mais rápido',
   };
 
@@ -2201,7 +2394,7 @@ const MINI = (() => {
     setTimeout(() => {
       mode = 'play'; type = null; UI.miniHUD(null); SND.setDuck(1); if (s.grind) s.grind.stop();
       if (s.forge) { s.forge.stop(); SND.playMusic('oficina'); }
-      stepDone(s.step, score, extra);
+      if (s.step === 'torno') caboPronto(w.torno, score); else stepDone(s.step, score, extra);
     }, s.forge ? 2200 : 900);
   }
 
@@ -2210,6 +2403,7 @@ const MINI = (() => {
     s.done = true; if (s.grind) s.grind.stop();
     if (s.forge) { s.forge.stop(); SND.playMusic('oficina'); }
     if (type === 'heat') S.mats.carvao++;
+    if (type === 'torno') S.mats[w.torno.w] += CABO[w.torno.t].wood;
     mode = 'play'; type = null; UI.miniHUD(null); UI.closeAssembly(); SND.setDuck(1);
     UI.toast('Etapa interrompida. A peça aguarda; retome quando quiser.', 'relogio');
   }
@@ -2863,6 +3057,214 @@ const MINI = (() => {
     drawFloats();
   };
 
+  // ================================================================== TORNO (cabos: seguir o gabarito; o corte não volta atrás)
+  const TN = 43, TX0 = 72, TCW = 6, TCY = 112, TR0 = 18;
+  function lathBG() {
+    if (bgs.torno) return bgs.torno;
+    const c = canvasOf(W, H), x = c.getContext('2d'), d = new Pix(x);
+    d.vplanks(0, 0, W, 200, ['#120a05', '#1e1209', '#2a190d', '#352011', '#432a17'], 12, 71);
+    d.r(0, 196, W, 44, MFLOOR[2]); d.planks(0, 200, W, 40, MFLOOR, 10, 73);
+    const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(8,4,10,0.55)'); gr.addColorStop(1, 'rgba(8,4,10,0.15)'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    x.drawImage(layer(dd => {
+      dd.r(30, 158, 10, 44, PAL.wood[2]); dd.vl(30, 158, 44, PAL.wood[4]); dd.r(360, 158, 10, 44, PAL.wood[2]); dd.vl(360, 158, 44, PAL.wood[4]); dd.r(30, 190, 340, 5, PAL.wood[2]);
+      dd.r(16, 148, 368, 10, PAL.iron[2]); dd.hl(16, 148, 368, PAL.iron[4]); dd.hl(16, 157, 368, PAL.iron[1]);
+      dd.r(14, 70, 52, 78, PAL.wood[3]); dd.hl(14, 70, 52, PAL.wood[5]); dd.vl(65, 70, 78, PAL.wood[1]); dd.band(14, 88, 52, 3); dd.band(14, 134, 52, 3);
+      dd.circ(40, 108, 18, PAL.iron[1]); dd.circ(40, 108, 16, PAL.iron[3]); dd.circ(40, 108, 12, PAL.iron[2]); dd.circ(40, 108, 3, PAL.iron[5]);
+      dd.r(64, 100, 8, 24, PAL.iron[3]); dd.vl(64, 100, 24, PAL.iron[5]);
+      dd.r(338, 92, 42, 56, PAL.iron[2]); dd.hl(338, 92, 42, PAL.iron[4]); dd.vl(379, 92, 56, PAL.iron[1]); dd.r(330, 108, 8, 8, PAL.iron[4]); dd.poly([[330, 108], [324, 112], [330, 116]], PAL.iron[5]);
+      dd.r(380, 104, 4, 16, PAL.iron[3]); dd.circ(382, 112, 6, PAL.iron[3]); dd.circ(382, 112, 4, PAL.iron[2]);
+      dd.r(56, 140, 290, 4, PAL.iron[3]); dd.hl(56, 140, 290, PAL.iron[5]); dd.r(196, 144, 8, 4, PAL.iron[2]);
+    }), 0, 0);
+    bgs.torno = c; return c;
+  }
+  INIT.torno = () => {
+    const tc = w.torno, [resp, vel, tol, rate] = MATS[tc.w].wd, pts = CABO[tc.t].pts, alvo = [];
+    for (let i = 0; i < TN; i++) { const x = (i + 0.5) / TN; let k = 1; while (k < pts.length - 1 && pts[k][0] < x) k++; const [x0, r0] = pts[k - 1], [x1, r1] = pts[k]; alvo.push(r0 + (r1 - r0) * clamp((x - x0) / (x1 - x0), 0, 1)); }
+    Object.assign(s, { step: 'torno', tc, resp, vel, tol, rate, alvo, cur: new Array(TN).fill(TR0), pos: 0, dir: 1, pass: 1, p: 0, v: 0, rot: 0 });
+    s.grind = SND.grind(420, 700, 1.4); SND.setDuck(0.5);
+  };
+  PRESS.torno = () => { s.held = true; };
+  REL.torno = () => { s.held = false; };
+  const cutR = () => TR0 + 2 - s.p * 17;
+  UPD.torno = dt => {
+    if (s.done) return;
+    s.rot += dt * 16;
+    s.v += (s.held ? s.resp : -s.resp * 0.9) * dt; s.v *= 0.95; s.p += s.v * dt;
+    if (s.p < 0) { s.p = 0; s.v = 0; } if (s.p > 1) { s.p = 1; s.v = 0; }
+    s.pos += s.dir * s.vel * dt;
+    if (s.pos >= 1) { s.pos = 1; s.dir = -1; s.pass = 2; judge(200, 50, 'PASSADA 2: ACABAMENTO', PAL.parch[4]); }
+    if (s.pos <= 0 && s.pass === 2) return terminaTorno();
+    const i = clamp(Math.floor(s.pos * TN), 0, TN - 1), cr = cutR(), antes = s.cur[i], cx = TX0 + s.pos * TN * TCW;
+    let corte = 0;
+    if (cr < antes) { corte = Math.min(antes - cr, s.rate * dt); s.cur[i] -= corte; }
+    if (antes >= s.alvo[i] - s.tol && s.cur[i] < s.alvo[i] - s.tol) { judge(cx, 64, 'FUNDO DEMAIS!', PAL.red[4]); SND.fx.miss(); }
+    if (s.grind) s.grind.set(corte > 0 ? clamp(0.35 + corte / (s.rate * dt) * 0.65, 0, 1) : 0);
+    const P2 = WOODPAL[s.tc.w];
+    if (corte > 0 && rand() < 0.9) parts.push({ x: cx, y: TCY + s.cur[i] + 1, vx: 20 + rand() * 70, vy: -60 - rand() * 70, l: 0, m: 0.5 + rand() * 0.5, c: P2[3 + (rand() < 0.4 ? 1 : 0)], s: 2, gr: 260 });
+    if (corte > 0 && rand() < 0.5) parts.push({ x: cx + (rand() - 0.5) * 4, y: TCY + s.cur[i], vx: (rand() - 0.5) * 30, vy: 10 + rand() * 30, l: 0, m: 0.8, c: P2[4], s: 1, gr: 120 });
+  };
+  function terminaTorno() {
+    let soma = 0, quebrou = false;
+    s.cur.forEach((r, i) => { const e = r - s.alvo[i]; soma += e < -s.tol ? Math.max(0, 1 - (-e - s.tol) / 2.5) : e > s.tol ? Math.max(0, 1 - (e - s.tol) / 5) : 1; if (r < 4) quebrou = true; });
+    const q = clamp(soma / TN * (quebrou ? 0.5 : 1), 0.1, 1);
+    judge(200, 60, quebrou ? 'CABO FRÁGIL' : q > 0.9 ? 'CABO PERFEITO!' : q > 0.7 ? 'BOM CABO' : 'CABO IRREGULAR', q > 0.7 ? PAL.gold[4] : PAL.parch[4]);
+    if (q > 0.9) SND.fx.good();
+    end(q);
+  }
+  DRAW.torno = t => {
+    g.drawImage(lathBG(), 0, 0);
+    const d = new Pix(g), P2 = WOODPAL[s.tc.w];
+    for (let k = 0; k < 6; k++) { const a = s.rot * 0.4 + k * Math.PI / 3; d.line(40, 108, Math.round(40 + Math.cos(a) * 11), Math.round(108 + Math.sin(a) * 11), PAL.iron[4]); }
+    // a peça girando: sombreado de cilindro e veios que passam com a rotação
+    for (let i = 0; i < TN; i++) {
+      const r = Math.max(1, Math.round(s.cur[i])), x = TX0 + i * TCW;
+      d.r(x, TCY - r - 1, TCW, 2 * r + 2, PAL.ink);
+      for (let yy = -r; yy < r; yy++) { const k = (yy + 0.5) / r; d.r(x, TCY + yy, TCW, 1, P2[k < -0.55 ? 4 : k < -0.05 ? 3 : k < 0.5 ? 2 : 1]); }
+      for (let v = 0; v < 4; v++) { const ph = s.rot + v * 1.57; if (Math.cos(ph) > 0.2) d.r(x, Math.round(TCY + Math.sin(ph) * (r - 1)), TCW, 1, P2[Math.cos(ph) > 0.7 ? 1 : 2]); }
+    }
+    // gabarito: verde = no ponto, dourado = ainda grosso, vermelho = fundo demais
+    for (let i = 0; i < TN; i++) {
+      const x = TX0 + i * TCW, a = Math.round(s.alvo[i]), e = s.cur[i] - s.alvo[i];
+      g.fillStyle = e < -s.tol ? PAL.red[4] : e > s.tol ? PAL.gold[4] : PAL.green[4];
+      g.fillRect(x + 1, TCY - a - 1, 3, 1); g.fillRect(x + 1, TCY + a, 3, 1);
+    }
+    // formão apoiado na barra, por baixo da peça
+    const cx = Math.round(TX0 + s.pos * TN * TCW), ty = Math.round(TCY + cutR());
+    d.poly([[cx - 2, ty], [cx + 2, ty], [cx + 5, 141], [cx, 141]], PAL.iron[4]); d.line(cx - 1, ty, cx + 1, 141, PAL.iron[6]);
+    d.r(cx, 139, 7, 4, PAL.gold[3]); d.hl(cx, 139, 7, PAL.gold[4]);
+    for (let k = -2; k <= 2; k++) d.line(cx + 3 + k, 143, cx + 22 + k, 198, k < 0 ? PAL.wood[5] : k > 0 ? PAL.wood[2] : PAL.wood[4]);
+    drawParts(); vignette();
+    drawText(g, MATS[s.tc.w].name.toUpperCase() + ' - ' + CABO[s.tc.t].name.toUpperCase() + ' - PASSADA ' + s.pass + '/2', 200, 40, PAL.parch[4], 'center');
+    drawText(g, 'SIGA O GABARITO: VERDE NO PONTO, VERMELHO FUNDO DEMAIS', 200, 210, PAL.parch[3], 'center');
+    bar(100, 224, 200, 5, s.pass === 1 ? s.pos / 2 : 0.5 + (1 - s.pos) / 2, PAL.gold[3]);
+    drawFloats();
+  };
+
+  // ================================================================== MONTAGEM (encaixar as peças na planta)
+  const PLANTAS = {
+    espada: { L: 100, hw: 5, g: 22, c: 32, y: 148 },
+    faca: { L: 60, hw: 4, g: 13, c: 26, y: 148 },
+    katana: { L: 104, hw: 3, g: 10, c: 42, y: 146, curva: 1 },
+  };
+  function interp(pts, x) { let k = 1; while (k < pts.length - 1 && pts[k][0] < x) k++; const [x0, r0] = pts[k - 1], [x1, r1] = pts[k]; return r0 + (r1 - r0) * clamp((x - x0) / (x1 - x0), 0, 1); }
+  // cada peça vira um sprite (100x300, âncora no meio) + um contorno tracejado de planta
+  function mkPeca(fn) {
+    const c = canvasOf(100, 300), x = c.getContext('2d'); fn(new Pix(x), 50, 150);
+    const gh = canvasOf(100, 300), gx = gh.getContext('2d'), im = x.getImageData(0, 0, 100, 300).data, A = (i, j) => i >= 0 && j >= 0 && i < 100 && j < 300 && im[(j * 100 + i) * 4 + 3] > 0;
+    gx.fillStyle = BP.line;
+    for (let j = 0; j < 300; j++) for (let i = 0; i < 100; i++) if (A(i, j) && (!A(i - 1, j) || !A(i + 1, j) || !A(i, j - 1) || !A(i, j + 1)) && (i + j) % 3) gx.fillRect(i, j, 1, 1);
+    outline(c); return { c, gh };
+  }
+  function pecasDe(w2, cabo, est) {
+    const R = RECIPES[w2.r], M = METAL[w2.m || 'ferro'], Mg = est === 'real' ? METAL.ouro : M, Wp = WOODPAL[cabo.w], Pc = PLANTAS[w2.r], L = [];
+    const caboRows = (d, ox, oy, len, pts, sc, couro) => { for (let yy = 0; yy < len; yy++) { const rr = Math.max(1, Math.round(interp(pts, yy / len) * sc)); d.r(ox - rr, oy + yy, 2 * rr + 1, 1, Wp[2]); d.p(ox - rr, oy + yy, Wp[3]); d.p(ox + rr, oy + yy, Wp[1]); if (couro && yy % 4 === 1 && yy > 3 && yy < len - 4) d.r(ox - rr, oy + yy, 2 * rr + 1, 1, couro); } };
+    if (Pc) {
+      const y0 = Pc.y;
+      L.push({ n: 'LÂMINA', ax: 'y', x: 170, y: y0, la: -Pc.L / 2, met: 1, s: mkPeca((d, ox, oy) => {
+        d.r(ox - 1, oy, 3, Pc.c - 2, M[1]);
+        if (Pc.curva) { for (let yy = 0; yy < Pc.L; yy++) { const off = Math.round((yy / Pc.L) ** 2 * 7), hw = yy > Pc.L - 8 ? Math.max(0, Math.round((Pc.L - yy) / 3)) : Pc.hw; d.r(ox - hw + off, oy - yy, hw * 2 + 1, 1, M[2]); d.p(ox - hw + off, oy - yy, M[3]); d.p(ox + hw + off, oy - yy, M[1]); if (yy % 6 < 3 && yy < Pc.L - 8) d.p(ox - hw + 1 + off, oy - yy, M[3]); } }
+        else { d.poly([[ox - Pc.hw, oy], [ox - Pc.hw, oy - Pc.L + 12], [ox, oy - Pc.L], [ox + Pc.hw + 1, oy - Pc.L + 12], [ox + Pc.hw + 1, oy]], M[2]); d.poly([[ox + 1, oy], [ox + 1, oy - Pc.L + 2], [ox + Pc.hw + 1, oy - Pc.L + 12], [ox + Pc.hw + 1, oy]], M[1]); d.vl(ox - Pc.hw, oy - Pc.L + 12, Pc.L - 12, M[3]); d.vl(ox, oy - Pc.L + 16, Pc.L - 22, M[0]); }
+      }) });
+      L.push({ n: w2.r === 'katana' ? 'TSUBA' : 'GUARDA', ax: 'x', x: 170, y: y0 + 1, met: 1, s: mkPeca((d, ox, oy) => {
+        if (w2.r === 'katana') { d.ell(ox, oy, Pc.g + (est === 'classico' ? 0 : 2), 3, Mg[1]); d.ell(ox, oy - 1, Pc.g - 1 + (est === 'classico' ? 0 : 2), 2, Mg[2]); if (est !== 'classico') [-6, 6].forEach(k => d.p(ox + k, oy - 1, Mg[3])); return; }
+        const gw = Pc.g; d.r(ox - gw, oy - 2, gw * 2 + 1, 5, Mg[2]); d.hl(ox - gw, oy - 2, gw * 2 + 1, Mg[3]); d.hl(ox - gw, oy + 2, gw * 2 + 1, Mg[1]);
+        if (est === 'classico') { d.r(ox - gw - 2, oy - 3, 3, 7, Mg[2]); d.r(ox + gw, oy - 3, 3, 7, Mg[2]); }
+        if (est === 'nobre') { d.r(ox - gw - 2, oy - 8, 3, 9, Mg[2]); d.r(ox + gw, oy - 8, 3, 9, Mg[2]); d.p(ox - gw - 1, oy - 8, Mg[3]); d.p(ox + gw + 1, oy - 8, Mg[3]); }
+        if (est === 'real') { for (let a = 0; a < 48; a++) { const an = a / 48 * 6.283; d.p(ox + 7 + Math.cos(an) * 5, oy + 8 + Math.sin(an) * 5, Mg[2]); d.p(ox + 7 + Math.cos(an) * 4, oy + 8 + Math.sin(an) * 4, Mg[1]); } d.circ(ox, oy, 2, PAL.red[3]); }
+      }) });
+      L.push({ n: CABO.curto.name.toUpperCase(), ax: 'y', x: 170, y: y0 + 4, la: Pc.c / 2, s: mkPeca((d, ox, oy) => caboRows(d, ox, oy, Pc.c, CABO.curto.pts, 0.3, w2.r === 'espada' ? PAL.leather[2] : w2.r === 'katana' ? PAL.blue[2] : null)) });
+      L.push({ n: w2.r === 'katana' ? 'KASHIRA' : 'POMO', ax: 'x', x: 170, y: y0 + 4 + Pc.c + 4, met: 1, s: mkPeca((d, ox, oy) => {
+        if (w2.r === 'katana') { d.r(ox - 4, oy - 3, 9, 5, Mg[1]); d.hl(ox - 4, oy - 3, 9, Mg[3]); return; }
+        if (est === 'classico') { d.circ(ox, oy, 5, Mg[2]); d.circ(ox - 1, oy - 1, 2, Mg[3]); }
+        if (est === 'nobre') { d.circ(ox, oy, 6, Mg[2]); d.circ(ox, oy, 3, Mg[1]); d.circ(ox, oy, 1, Mg[3]); }
+        if (est === 'real') { d.ell(ox, oy + 1, 4, 6, Mg[2]); d.ell(ox - 1, oy - 1, 2, 3, Mg[3]); d.p(ox, oy - 6, PAL.red[4]); }
+      }) });
+      return L;
+    }
+    const lanca = w2.r === 'lanca', top = lanca ? 82 : 72;
+    L.push({ n: (lanca ? 'HASTE' : 'CABO') + ' DE ' + MATS[cabo.w].name.toUpperCase(), ax: 'y', x: 170, y: top, la: 70, s: mkPeca((d, ox, oy) => caboRows(d, ox, oy, lanca ? 130 : 136, CABO[cabo.t].pts, 0.42)) });
+    if (lanca) {
+      L.push({ n: 'VIROLA', ax: 'x', x: 170, y: top, met: 1, s: mkPeca((d, ox, oy) => { d.r(ox - 4, oy + 1, 9, 6, M[1]); d.hl(ox - 4, oy + 1, 9, M[3]); d.p(ox, oy + 4, M[3]); }) });
+      L.push({ n: 'PONTA', ax: 'y', x: 170, y: top, la: -24, met: 1, s: mkPeca((d, ox, oy) => { d.poly([[ox, oy - 44], [ox + 7, oy - 26], [ox + 3, oy - 10], [ox + 3, oy + 2], [ox - 3, oy + 2], [ox - 3, oy - 10], [ox - 7, oy - 26]], M[2]); d.vl(ox, oy - 40, 36, M[3]); d.r(ox - 3, oy - 6, 7, 8, M[1]); }) });
+      return L;
+    }
+    const cab = {
+      enxada: (d, ox, oy) => { d.poly([[ox - 5, oy - 3], [ox - 34, oy + 8], [ox - 34, oy + 22], [ox - 5, oy + 5]], M[2]); d.vl(ox - 34, oy + 8, 15, M[3]); d.line(ox - 5, oy + 5, ox - 34, oy + 22, M[0]); d.r(ox - 5, oy - 6, 11, 12, M[1]); d.r(ox - 4, oy - 5, 9, 10, M[2]); },
+      picareta: (d, ox, oy) => { d.poly([[ox - 42, oy + 8], [ox - 20, oy - 5], [ox, oy - 7], [ox + 20, oy - 5], [ox + 42, oy + 8], [ox + 20, oy], [ox, oy - 1], [ox - 20, oy]], M[2]); d.line(ox - 40, oy + 7, ox - 20, oy - 4, M[3]); d.r(ox - 5, oy - 7, 11, 11, M[1]); },
+      machado: (d, ox, oy) => { d.poly([[ox + 4, oy - 6], [ox + 20, oy - 10], [ox + 32, oy - 17], [ox + 32, oy + 21], [ox + 20, oy + 12], [ox + 4, oy + 6]], M[2]); d.vl(ox + 32, oy - 17, 38, M[3]); d.r(ox - 9, oy - 5, 5, 10, M[1]); d.r(ox - 5, oy - 7, 10, 14, M[1]); },
+      martelo: (d, ox, oy) => { d.r(ox - 20, oy - 8, 41, 15, M[2]); d.hl(ox - 20, oy - 8, 41, M[3]); d.r(ox - 23, oy - 9, 4, 17, M[1]); d.r(ox + 20, oy - 9, 4, 17, M[1]); d.r(ox - 5, oy - 9, 11, 17, M[1]); },
+    }[w2.r] || ((d, ox, oy) => d.r(ox - 10, oy - 6, 21, 12, M[2]));
+    L.push({ n: 'CABEÇA', ax: 'x', x: 170, y: top, met: 1, s: mkPeca(cab) });
+    L.push({ n: 'CUNHA', ax: 'y', x: 170, y: top, s: mkPeca((d, ox, oy) => { d.poly([[ox - 2, oy - 9], [ox + 2, oy - 9], [ox + 1, oy + 3], [ox - 1, oy + 3]], WOODPAL.madeira[3]); d.vl(ox - 2, oy - 9, 3, WOODPAL.madeira[4]); }) });
+    return L;
+  }
+  function bpBG() {
+    if (bgs.bp) return bgs.bp;
+    const c = canvasOf(W, H), x = c.getContext('2d'), d = new Pix(x);
+    d.planks(0, 0, W, H, PAL.wood, 12, 81);
+    x.fillStyle = 'rgba(8,4,10,0.35)'; x.fillRect(0, 0, W, H);
+    d.r(32, 36, 360, 190, PAL.ink); d.r(34, 38, 356, 186, BP.bg);
+    for (let xx = 34; xx < 390; xx += 6) d.vl(xx, 38, 186, BP.grid); for (let yy = 38; yy < 224; yy += 6) d.hl(34, yy, 356, BP.grid);
+    for (let xx = 34; xx < 390; xx += 30) d.vl(xx, 38, 186, '#3570ad'); for (let yy = 38; yy < 224; yy += 30) d.hl(34, yy, 356, '#3570ad');
+    x.strokeStyle = BP.dim; x.lineWidth = 1; x.strokeRect(38.5, 42.5, 347, 177); x.strokeRect(40.5, 44.5, 343, 173);
+    d.r(268, 186, 116, 30, BP.bg); x.strokeRect(268.5, 186.5, 115, 30);
+    [[35, 39], [387, 39], [35, 221], [387, 221]].forEach(([px, py]) => { d.circ(px, py, 2, PAL.red[2]); d.p(px - 1, py - 1, PAL.red[4]); });
+    bgs.bp = c; return c;
+  }
+  INIT.assemble = () => {
+    const c = S.cabos.find(k => k.id === w.monta.c), est = w.monta.est, tier = tierOf();
+    const vel = (1 + tier * 0.1) * ESTILO[est].sp * (sk('h3') ? 0.85 : 1);
+    Object.assign(s, { step: 'assemble', cabo: c, est, tier, pecas: pecasDe(w, c, est), i: 0, tt: 0, pausa: 0.6, notas: [], vel, fase: rand() * 6 });
+    SND.setDuck(0.6);
+  };
+  const offAt = (k, tt) => { const p = s.pecas[k], A = p.ax === 'x' ? 46 : 30, om = (1.9 + k * 0.25) * s.vel; return A * Math.sin(om * tt + s.fase + (s.tier >= 2 ? 0.7 * Math.sin(1.3 * om * tt) : 0)); };
+  PRESS.assemble = () => {
+    if (s.done || s.pausa > 0 || s.i >= s.pecas.length) return;
+    const p = s.pecas[s.i], off = offAt(s.i, s.tt), err = Math.abs(off), sc = err <= 1.2 ? 1 : clamp(1 - (err - 1.2) / 12, 0.1, 1);
+    p.off = Math.round(off); s.notas.push(sc);
+    const jx = p.ax === 'x' ? p.x + p.off : p.x, jy = p.ax === 'y' ? p.y + p.off : p.y;
+    judge(92, 64 + s.i * 30, err <= 1.2 ? 'PERFEITO!' : err <= 4 ? 'BOM' : 'TORTO', err <= 1.2 ? PAL.gold[5] : err <= 4 ? PAL.parch[4] : PAL.red[4]);
+    if (p.met) SND.fx.anvil(sc > 0.9 ? 0.6 : 0.35, 1.5 + s.i * 0.08); else SND.fx.thud();
+    spark(jx, jy, sc > 0.9 ? 10 : 4, p.met ? undefined : WOODPAL[s.cabo.w][4]); shake = 1 + sc * 2;
+    s.i++; s.tt = 0; s.pausa = 0.45; s.fase = rand() * 6; s.off = undefined;
+    if (s.i >= s.pecas.length) {
+      const media = s.notas.reduce((a, b) => a + b, 0) / s.notas.length, c = s.cabo;
+      S.cabos.splice(S.cabos.indexOf(c), 1); w.wood = c.w; w.sc.cabo = c.q; w.estilo = s.est; delete w.monta;
+      judge(170, 30 + 20, media > 0.9 ? 'MONTAGEM IMPECÁVEL!' : media > 0.7 ? 'PEÇA MONTADA' : 'MONTAGEM TORTA', media > 0.7 ? PAL.gold[4] : PAL.parch[4]);
+      if (media > 0.9) SND.fx.good();
+      end(media);
+    }
+  };
+  UPD.assemble = dt => { if (s.done) return; if (s.pausa > 0) s.pausa -= dt; else { s.tt += dt; if (s.i < s.pecas.length) s.off = offAt(s.i, s.tt); } };
+  DRAW.assemble = t => {
+    g.drawImage(bpBG(), 0, 0);
+    const R = RECIPES[w.r], d = new Pix(g);
+    drawText(g, 'PLANTA DE MONTAGEM', 48, 50, BP.dim);
+    drawText(g, R.name.toUpperCase(), 327, 192, BP.line, 'center');
+    drawText(g, (MATS[w.m] ? MATS[w.m].name.toUpperCase() + ' - ' : '') + ESTILO[s.est].name.toUpperCase(), 327, 204, BP.dim, 'center');
+    // contornos tracejados de todas as peças e as cotas com os nomes
+    s.pecas.forEach((p, k) => {
+      g.globalAlpha = k === s.i ? 0.6 + Math.sin(t * 6) * 0.4 : k < s.i ? 0.25 : 0.7;
+      g.drawImage(p.s.gh, p.x - 50, p.y - 150); g.globalAlpha = 1;
+      const ly = 56 + k * 30, cor = k < s.i ? (s.notas[k] > 0.9 ? PAL.green[4] : s.notas[k] > 0.6 ? PAL.gold[4] : PAL.red[4]) : k === s.i ? BP.line : BP.dim;
+      d.line(p.x + 8, p.y + (p.la || 0), 250, ly + 3, BP.dim); d.hl(250, ly + 3, 14, BP.dim);
+      drawText(g, (k < s.i ? '+ ' : '') + p.n, 268, ly, cor);
+      if (k < s.i) drawText(g, Math.round(s.notas[k] * 100) + '%', 268, ly + 10, cor);
+    });
+    // peças já encaixadas (na posição em que ficaram) e a peça corrente correndo no trilho
+    s.pecas.forEach((p, k) => {
+      if (k > s.i) return;
+      let ox = 0, oy = 0;
+      if (k < s.i) { if (p.ax === 'x') ox = p.off; else oy = p.off; }
+      else if (k === s.i) { const o = s.pausa > 0 ? offAt(k, 0) : offAt(k, s.tt); if (p.ax === 'x') ox = o; else oy = o; }
+      if (k === s.i) { g.fillStyle = 'rgba(216,236,255,0.35)'; if (p.ax === 'x') g.fillRect(p.x - 60, Math.round(p.y), 120, 1); else g.fillRect(Math.round(p.x), p.y - 40, 1, 80); g.fillStyle = PAL.gold[4]; if (p.ax === 'x') { g.fillRect(p.x, p.y - 4, 1, 3); g.fillRect(p.x, p.y + 2, 1, 3); } else { g.fillRect(p.x - 5, p.y, 3, 1); g.fillRect(p.x + 3, p.y, 3, 1); } }
+      g.drawImage(p.s.c, Math.round(p.x - 50 + ox), Math.round(p.y - 150 + oy));
+    });
+    drawParts();
+    drawText(g, 'ESPAÇO QUANDO A PEÇA PASSAR NA MARCA DOURADA', 170, 228, PAL.parch[4], 'center');
+    drawFloats();
+  };
+
   // ================================================================== FINALIZAR (3 golpes de acabamento em pontos diferentes)
   function benchBG() {
     if (bgs.bench) return bgs.bench;
@@ -3093,7 +3495,7 @@ const UI = (() => {
       h += `<div class="bar-info">Moedas: <b class="gold-t">${S.gold}</b>${S.event && (S.event.id === 'carvao' || S.event.id === 'minerio') ? ' · <b class="warn">' + S.event.name + ': preços reduzidos hoje!</b>' : ''}${sk('a1') ? ' · Conhecimento dos Metais: -15%' : ''}</div><div class="grid">`;
       h += Object.keys(MATS).map(k => {
         const M = MATS[k], ok = reqOK(M.req), c = matCost(k);
-        return `<div class="mat ${ok ? '' : 'lock'}">${ico(M.icon, M.metal || 'ferro', 36)}<div class="ct"><b>${M.name} <em>×${S.mats[k] || 0}</em></b><small>${M.desc}</small>
+        return `<div class="mat ${ok ? '' : 'lock'}">${ico(M.icon, M.metal || M.tint || 'ferro', 36)}<div class="ct"><b>${M.name} <em>×${S.mats[k] || 0}</em></b><small>${M.desc}</small>
           ${ok ? `<div class="buy"><span>${c} moedas</span><button ${S.gold < c ? 'disabled' : ''} onclick="UI.h.buy('${k}',1)">+1</button><button ${S.gold < c * 5 ? 'disabled' : ''} onclick="UI.h.buy('${k}',5)">+5</button></div>` : `<div class="buy lockt">Requer: ${reqText(M.req)}</div>`}</div></div>`;
       }).join('') + '</div>';
     }
@@ -3125,7 +3527,7 @@ const UI = (() => {
       <div class="lbl">Etapas</div><div class="chips">${R.steps.map(s => `<span class="chip">${ico(STEP[s].icon, 'ferro', 14)}${STEP[s].name}</span>`).join('<span class="arr">›</span>')}</div>
       <div class="lbl">Cântico</div><div class="chant">«${R.pat.split(/\s+/).filter(x => x !== '.').slice(0, 8).join(' · ')}${R.loops ? ' ×' + R.loops : ''}»</div>
       <div class="lbl">Metal (${R.metal})</div><div class="metals">${METALS.map(m => { const okm = metalOK(m); return `<button class="${m === metSel ? 'on' : ''}" ${okm ? '' : 'disabled title="Requer: ' + reqText(MATS[m].req) + '"'} onclick="UI.h.met('${m}')">${ico('lingote', m, 20)}${MATS[m].name}<em>${S.mats[m] || 0}</em></button>`; }).join('')}</div>
-      <div class="lbl">Outros materiais</div><div class="need">${Object.keys(R.extra).length ? Object.entries(R.extra).map(([k, n]) => `<span class="${(S.mats[k] || 0) >= n ? '' : 'red'}">${ico(MATS[k].icon, 'ferro', 18)} ${n} ${MATS[k].name} (tem ${S.mats[k] || 0})</span>`).join('') : '<span>Nenhum</span>'}<span>${ico('carvao', 'ferro', 18)} 1 Carvão por aquecimento (tem ${S.mats.carvao})</span></div>
+      <div class="lbl">Outros materiais</div><div class="need">${Object.keys(R.extra).length ? Object.entries(R.extra).map(([k, n]) => `<span class="${(S.mats[k] || 0) >= n ? '' : 'red'}">${ico(MATS[k].icon, 'ferro', 18)} ${n} ${MATS[k].name} (tem ${S.mats[k] || 0})</span>`).join('') : '<span>Nenhum</span>'}<span>${ico('carvao', 'ferro', 18)} 1 Carvão por aquecimento (tem ${S.mats.carvao})</span>${R.cabo ? `<span class="${S.cabos.some(c => c.t === R.cabo) ? '' : 'red'}">${ico('madeira', 'freixo', 18)} 1 ${CABO[R.cabo].name} — feito no Torno da Marcenaria (tem ${S.cabos.filter(c => c.t === R.cabo).length})</span>` : ''}</div>
       ${ok ? (err ? `<div class="red errl">${err}</div>` : '') : `<div class="red errl">Bloqueada — requer ${reqText(R.req)}</div>`}
       <button class="gold big" ${!ok || err || S.wip ? 'disabled' : ''} onclick="UI.h.craft()">Começar a forjar</button></div></div>`;
     return h;
@@ -3388,19 +3790,19 @@ const UI = (() => {
     show('summary'); h.sumok = () => { show('summary', false); hud(); cb && cb(); };
   }
   function result(it, sc, special, cb) {
-    const R = RECIPES[it.r], ST = { heat: 'Aquecimento', hammer: 'Ritmo', quench: 'Têmpera', sharpen: 'Fio' };
+    const R = RECIPES[it.r], ST = { heat: 'Aquecimento', hammer: 'Ritmo', quench: 'Têmpera', sharpen: 'Fio', cabo: 'Cabo', assemble: 'Montagem' };
     const ord = !special && S.orders.find(o => (o.status === 'ativa' || o.status === 'atrasada') && orderMatch(o, it));
     $('res-body').innerHTML = `<div class="res-ic ${it.rar === 3 ? 'leg' : ''}" style="--c:${it.rar ? RAR[it.rar].col : QUAL[it.qi].col}">${ico(R.icon, it.m || 'ferro', 96)}</div>
       <h2>${esc(special ? (it.r === 'tenkai' ? 'Tenkai — fio restaurado' : 'Reparo concluído') : it.name)}</h2>${it.title ? `<div class="leg-title">«${esc(it.title)}»</div>` : ''}
-      <div class="meta center">${qtag(it.qi)} ${rtag(it.rar)} ${it.rune ? '<span class="tag" style="--c:#43c8d8">Runa</span>' : ''}</div>
+      <div class="meta center">${qtag(it.qi)} ${rtag(it.rar)} ${it.rune ? '<span class="tag" style="--c:#43c8d8">Runa</span>' : ''}${it.wood ? `<span class="tag" style="--c:${WOODPAL[it.wood][3]}">Cabo de ${MATS[it.wood].name}</span>` : ''}</div>
       <div class="breakdown">${Object.keys(ST).filter(k => sc[k] !== undefined).map(k => `<div><span>${ST[k]}</span><i><u style="width:${Math.round(sc[k] * 100)}%"></u></i><b>${Math.round(sc[k] * 100)}%</b></div>`).join('')}<div><span>Nota final</span><i><u style="width:${Math.round(it.score * 100)}%"></u></i><b>${Math.round(it.score * 100)}%</b></div></div>
       ${special ? '' : `<div class="val">Valor: <b class="gold-t">${it.value}</b> moedas</div>`}${ord ? `<p class="ok center">Esta peça atende a encomenda de ${esc(ord.cid)}.</p>` : ''}
       <div class="menu-list"><button class="gold big" onclick="UI.h.resok()">${special ? 'Entregar' : 'Guardar no estoque'}</button></div>`;
     show('result'); SND.fx.page();
     h.resok = () => { show('result', false); cb && cb(); };
   }
-  function assembly(opts, cb) {
-    $('asm-body').innerHTML = `<div class="lbl">Montagem e acabamento</div><div class="asm">${opts.map(o => `<button ${o.ok ? '' : 'disabled'} onclick="UI.h.asm('${o.id}')"><b>${o.t}</b><small>${o.d}</small></button>`).join('')}</div>`;
+  function assembly(opts, cb, titulo) {
+    $('asm-body').innerHTML = `<div class="lbl">${esc(titulo || 'Montagem e acabamento')}</div><div class="asm">${opts.map(o => `<button ${o.ok ? '' : 'disabled'} onclick="UI.h.asm('${o.id}')"><b>${o.t}</b><small>${o.d}</small></button>`).join('')}</div>`;
     show('assembly'); h.asm = id => { show('assembly', false); SND.fx.click(); cb(id); };
   }
   function closeAssembly() { show('assembly', false); }
@@ -3408,6 +3810,7 @@ const UI = (() => {
     show('hud', !step);
     if (!step) { show('minihud', false); return; }
     const R = RECIPES[w.r];
+    if (w.titulo) { $('mh-top').innerHTML = `${ico('madeira', w.torno.w, 28)}<b>${esc(w.titulo)}</b>`; $('mh-hint').innerHTML = `${esc(hint)} <kbd>Esc</kbd> interromper`; show('minihud'); return; }
     $('mh-top').innerHTML = `${ico(R.icon, w.m || 'ferro', 28)}<b>${esc(w.r === 'tenkai' ? 'Tenkai' : itemName(w.r, w.m))}</b><span class="chips">${R.steps.map((s, i) => `<span class="chip ${i < w.step ? 'ok' : i === w.step ? 'cur' : ''}">${STEP[s].name}</span>`).join('')}</span>`;
     $('mh-hint').innerHTML = `${esc(hint)} <kbd>Esc</kbd> interromper`;
     show('minihud');
