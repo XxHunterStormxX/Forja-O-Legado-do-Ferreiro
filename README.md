@@ -16,3 +16,4 @@ Cada versão fica em `Development Notes/BETA 0.N/`, com um README do que mudou. 
 | [BETA 0.2](Development%20Notes/BETA%200.2/) | Coração da Forja refeito: bigorna, martelo, minijogo e músicas. |
 | [BETA 0.3](Development%20Notes/BETA%200.3/) | Pauta musical TOM/TAM/TAN/TIN, som próprio de virar e voz mais humana. |
 | [BETA 0.4](Development%20Notes/BETA%200.4/) | Teclas da pauta em linha: 1 2 3 4 e ESPAÇO para virar. |
+| [BETA 0.5](Development%20Notes/BETA%200.5/) | Volta das teclas W A S D (e setas) na pauta; ESPAÇO continua virando. |

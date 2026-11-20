@@ -2077,7 +2077,7 @@ function toCanvas(e) { const r = cv.getBoundingClientRect(), p = e.touches ? e.t
 // ENTRADA
 // ---------------------------------------------------------------------------
 const ACT_KEYS = ['Space', 'KeyE', 'Enter', 'NumpadEnter'];
-const LANE_KEYS = { Digit1: 0, Numpad1: 0, Digit2: 1, Numpad2: 1, Digit3: 2, Numpad3: 2, Digit4: 3, Numpad4: 3 };
+const LANE_KEYS = { KeyS: 0, ArrowDown: 0, KeyA: 1, ArrowLeft: 1, KeyD: 2, ArrowRight: 2, KeyW: 3, ArrowUp: 3 };
 window.addEventListener('keydown', e => {
   SND.init();
   if (UI.keydown(e)) return;
@@ -2115,7 +2115,7 @@ const MINI = (() => {
   const metal = () => MATS[(w && w.m) || 'ferro'];
   const HINT = {
     heat: 'Segure ESPAÇO (ou o clique) para soprar o fole. Mantenha o calor dentro da faixa dourada até a maturação encher.',
-    hammer: 'Teclas 1 2 3 4 = TOM (grave) · TAM · TAN · TIN (agudo) · ESPAÇO = virar a peça · segure as notas longas · 8 seguidos = Fúria',
+    hammer: 'W/↑ TIN (agudo) · D/→ TAN · A/← TAM · S/↓ TOM (grave) · ESPAÇO = virar a peça · segure as notas longas · 8 seguidos = Fúria',
     quench: 'Mergulhe a peça (ESPAÇO / clique) quando a cor do metal chegar ao vermelho-cereja.',
     sharpen: 'Segure para pressionar a lâmina no rebolo. Mantenha o marcador dentro da faixa dourada.',
     finish: 'Golpeie quando o anel encontrar o círculo dourado.',
@@ -2308,7 +2308,7 @@ const MINI = (() => {
   }
   const SEC_NAME = { A: 'I - O PRIMEIRO CALOR', B: 'II - A VIRADA', C: 'III - O CORAÇÃO DA FORJA', F: 'O GOLPE FINAL' };
   // Pauta do Cântico: 4 notas do acorde, do grave (embaixo) ao agudo (em cima). Cada uma tem tecla, som e sílaba.
-  const LANE = ['TOM', 'TAM', 'TAN', 'TIN'], LANE_COL = ['#c8442a', '#f07a3a', '#ffb050', '#ffe08a'], LANE_KEY = ['1', '2', '3', '4'];
+  const LANE = ['TOM', 'TAM', 'TAN', 'TIN'], LANE_COL = ['#c8442a', '#f07a3a', '#ffb050', '#ffe08a'], LANE_KEY = ['S', 'A', 'D', 'W'];
   const LANE_Y = [216, 206, 196, 186], FLIP_Y = 228;
   const PREF = { TIC: 3, TA: 2, CLAM: 2, SHACK: 2, HA: 2, PAH: 1, TUM: 0, BUM: 0, DON: 0, FORJA: 3 };
   INIT.hammer = () => {
