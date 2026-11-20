@@ -18,3 +18,4 @@ Cada versão fica em `Development Notes/BETA 0.N/`, com um README do que mudou. 
 | [BETA 0.4](Development%20Notes/BETA%200.4/) | Teclas da pauta em linha: 1 2 3 4 e ESPAÇO para virar. |
 | [BETA 0.5](Development%20Notes/BETA%200.5/) | Volta das teclas W A S D (e setas) na pauta; ESPAÇO continua virando. |
 | [BETA 0.6](Development%20Notes/BETA%200.6/) | Partitura de verdade (clave de sol, Ré menor) e todas as músicas dentro de escalas naturais. |
+| [BETA 0.7](Development%20Notes/BETA%200.7/) | Dificuldade progressiva por material: metal mais nobre = mais notas e menos margem. |
