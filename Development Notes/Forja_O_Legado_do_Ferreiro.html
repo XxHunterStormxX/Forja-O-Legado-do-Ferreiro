@@ -1921,15 +1921,32 @@ function drawFire(x0, y0, mask, inten, t, w = 26, top = 30) {
   }
 }
 function ember(x, y, sp = 1) { parts.push({ x, y, vx: (rand() - 0.5) * 10 * sp, vy: -12 - rand() * 22 * sp, l: 0, m: 1 + rand() * 1.4, c: pick([PAL.fire[3], PAL.fire[4], PAL.fire[5]]), s: 1, gr: -2 }); }
-function spark(x, y, n, col) { for (let i = 0; i < n; i++) { const a = rand() * Math.PI * 2, v = 30 + rand() * 90; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, l: 0, m: 0.3 + rand() * 0.5, c: col || pick([PAL.fire[4], PAL.fire[5], '#ffffff']), s: 1, gr: 160 }); } }
-function steam(x, y, n) { for (let i = 0; i < n; i++) parts.push({ x: x + (rand() - 0.5) * 60, y, vx: (rand() - 0.5) * 20, vy: -15 - rand() * 30, l: 0, m: 1 + rand() * 1.5, c: 'rgba(220,225,235,0.55)', s: 2 + Math.floor(rand() * 3), gr: -5 }); }
+// faíscas com rastro; dir (opcional) = ângulo do jato
+function spark(x, y, n, col, dir) {
+  for (let i = 0; i < n; i++) {
+    const a = dir === undefined ? rand() * Math.PI * 2 : dir + (rand() - 0.5) * 0.9, v = 40 + rand() * 110;
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (dir === undefined ? 30 : 0), l: 0, m: 0.25 + rand() * 0.45, c: col || pick([PAL.fire[4], PAL.fire[5], '#ffffff']), s: 1, gr: 180, tr: 1 });
+  }
+}
+// vapor em nuvens que crescem e se desfazem
+function steam(x, y, n, w = 60) { for (let i = 0; i < n; i++) parts.push({ x: x + (rand() - 0.5) * w, y, vx: (rand() - 0.5) * 16, vy: -12 - rand() * 26, l: 0, m: 1.1 + rand() * 1.6, c: 'rgba(225,228,238,0.3)', s: 2 + rand() * 3, gr: -4, puff: 1 }); }
+function bolha(x, y) { parts.push({ x, y, vx: (rand() - 0.5) * 6, vy: -18 - rand() * 18, l: 0, m: 0.35 + rand() * 0.3, c: 'rgba(210,235,255,0.75)', s: 1, gr: -20 }); }
+function gota(x, y, vx, vy) { parts.push({ x, y, vx, vy, l: 0, m: 0.6 + rand() * 0.4, c: 'rgba(150,200,240,0.85)', s: 1, gr: 260, tr: 1 }); }
 function floatText(x, y, txt, col) { floats.push({ x, y, txt, col, l: 0 }); }
 function updateParts(dt) {
   parts.forEach(p => { p.l += dt; p.vy += p.gr * dt; p.x += p.vx * dt; p.y += p.vy * dt; });
   parts = parts.filter(p => p.l < p.m);
   floats.forEach(f => { f.l += dt; f.y -= 14 * dt; }); floats = floats.filter(f => f.l < 1.2);
 }
-function drawParts() { parts.forEach(p => { g.globalAlpha = Math.max(0, 1 - p.l / p.m); g.fillStyle = p.c; g.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s); }); g.globalAlpha = 1; }
+function drawParts() {
+  parts.forEach(p => {
+    const a = Math.max(0, 1 - p.l / p.m); g.fillStyle = p.c;
+    if (p.puff) { g.globalAlpha = a; g.beginPath(); g.arc(p.x, p.y, p.s * (1 + p.l / p.m * 2.2), 0, 6.2832); g.fill(); }
+    else if (p.tr) { const n = Math.min(7, 1 + Math.round(Math.hypot(p.vx, p.vy) / 28)); for (let i = 0; i < n; i++) { g.globalAlpha = a * (1 - i / n); g.fillRect(Math.round(p.x - p.vx * 0.012 * i), Math.round(p.y - p.vy * 0.012 * i), 1, 1); } }
+    else { g.globalAlpha = a; g.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s); }
+  });
+  g.globalAlpha = 1;
+}
 function drawFloats() { floats.forEach(f => { g.globalAlpha = Math.min(1, 2 - f.l * 1.6); drawText(g, f.txt, f.x, f.y, f.col, 'center'); }); g.globalAlpha = 1; }
 
 const lightCv = canvasOf(W, H), lg = lightCv.getContext('2d');
@@ -2114,11 +2131,11 @@ const MINI = (() => {
   const clock = () => useAudio ? SND.now() : performance.now() / 1000;
   const metal = () => MATS[(w && w.m) || 'ferro'];
   const HINT = {
-    heat: 'Segure ESPAÇO (ou o clique) para soprar o fole. Mantenha o calor dentro da faixa dourada até a maturação encher.',
+    heat: 'ESPAÇO/clique: bombear o fole (cada sopro aquece) · mantenha na faixa dourada · F/clique direito: virar a peça quando pedir · cuidado com vento e brasa viva',
     hammer: 'Partitura em Ré menor: W/↑ DÓ · D/→ LÁ · A/← FÁ · S/↓ RÉ · ESPAÇO = virar a peça · segure as notas longas · 8 seguidos = Fúria',
-    quench: 'Mergulhe a peça (ESPAÇO / clique) quando a cor do metal chegar ao vermelho-cereja.',
-    sharpen: 'Segure para pressionar a lâmina no rebolo. Mantenha o marcador dentro da faixa dourada.',
-    finish: 'Golpeie quando o anel encontrar o círculo dourado.',
+    quench: 'ESPAÇO/clique: 1) mergulhe no vermelho-cereja · 2) agite quando o anel fechar · 3) tire quando o vapor entrar na faixa dourada',
+    sharpen: 'Segure ESPAÇO/clique para pressionar (a ponta pede mão leve) · fique na faixa dourada · F/clique direito: molhar a lâmina quando superaquecer',
+    finish: 'ESPAÇO/clique quando cada anel encontrar o círculo dourado: 3 golpes, cada um mais rápido',
   };
 
   function start(step, wip) {
@@ -2187,57 +2204,112 @@ const MINI = (() => {
     d.r(196, 44, 8, 10, PAL.brick[4]); d.hl(196, 44, 8, '#c98a64');
   }
   let bellowsSpr = null;
+  // fole com 7 quadros de compressão (0 = aberto, 6 = fechado)
   function drawBellows(k) {
-    if (!bellowsSpr) bellowsSpr = [0, 1].map(f => spr(112, 88, d => {
-      const yT = f ? 40 : 28, yB = 58;
+    if (!bellowsSpr) bellowsSpr = [0, 1, 2, 3, 4, 5, 6].map(f => spr(112, 88, d => {
+      const yT = 26 + f * 2.4 | 0, yB = 58, mid = (yT + (yB - yT) * 0.5) | 0;
       d.r(18, 62, 6, 26, PAL.wood[2]); d.vl(18, 62, 26, PAL.wood[3]); d.r(78, 62, 6, 26, PAL.wood[2]); d.vl(78, 62, 26, PAL.wood[3]);
       d.r(12, 82, 80, 4, PAL.wood[3]); d.hl(12, 82, 80, PAL.wood[5]);
       d.r(86, 52, 6, 12, PAL.iron[2]); d.r(92, 54, 20, 8, PAL.iron[3]); d.hl(92, 54, 20, PAL.iron[5]); d.hl(92, 61, 20, PAL.iron[1]);
       d.ell(40, yB, 34, 9, PAL.wood[2]); d.poly([[40, yB - 9], [92, yB - 2], [92, yB + 3], [40, yB + 9]], PAL.wood[2]); d.hl(10, yB, 80, PAL.wood[3]);
-      for (let y = yT + 6; y < yB - 2; y += 3) { const w2 = 64 - (y - yT) * 0.2; d.r(8, y, w2, 2, PAL.leather[3]); d.r(8, y + 2, w2, 1, PAL.leather[1]); d.p(8, y, PAL.leather[4]); }
-      d.ell(40, yT, 34, 11, PAL.wood[4]); d.poly([[40, yT - 11], [92, yT + yB - yT - 6 > 0 ? (yT + (yB - yT) * 0.5) - 4 : yT - 3], [92, (yT + (yB - yT) * 0.5) + 2], [40, yT + 11]], PAL.wood[4]);
+      for (let y = yT + 5; y < yB - 2; y += 3) { const w2 = 64 - (y - yT) * 0.2; d.r(8, y, w2, 2, PAL.leather[3]); d.r(8, y + 2, w2, 1, PAL.leather[1]); d.p(8, y, PAL.leather[4]); }
+      d.ell(40, yT, 34, 11, PAL.wood[4]); d.poly([[40, yT - 11], [92, mid - 4], [92, mid + 2], [40, yT + 11]], PAL.wood[4]);
       d.ell(36, yT - 2, 24, 6, PAL.wood[5]); for (let i = 0; i < 4; i++) d.r(18 + i * 9, yT - 1 + (i % 2), 6, 1, PAL.wood[3]);
       [[12, yT], [40, yT - 10], [68, yT - 6], [40, yT + 10]].forEach(([x, y]) => d.rivet(x, y));
       d.r(2, yT - 26, 6, 26, PAL.wood[3]); d.vl(2, yT - 26, 26, PAL.wood[5]); d.r(0, yT - 30, 10, 6, PAL.wood[5]);
     }));
-    blit(g, bellowsSpr[k], 8, 106);
+    blit(g, bellowsSpr[Math.round(clamp(k, 0, 1) * 6)], 8, 106);
   }
   const INIT = {}, UPD = {}, DRAW = {}, PRESS = {}, PRESS2 = {}, REL = {};
+  const tierOf = () => (w && w.m ? (DIFF_TIER[w.m] ?? 1) : 1);
+  const rgba = (rgb, a) => rgb.replace('rgb(', 'rgba(').replace(')', ',' + a + ')');
   INIT.heat = () => {
     s.step = 'heat';
     const M = metal(), c = (M.heat[0] + M.heat[1]) / 2, hw = (M.heat[1] - M.heat[0]) / 2 * (sk('c1') ? 1.3 : 1);
-    Object.assign(s, { T: 0.12, prog: 0, inZ: 0, tot: 0, burn: 0, lo: c - hw, hi: c + hw, rise: 0.3 * (has('fole') ? 1.3 : 1) * (sk('c2') ? 1.25 : 1), bt: 0 });
+    Object.assign(s, { tier: tierOf(), T: 0.12, PT: 0.1, prog: 0, inZ: 0, tot: 0, burn: 0, c0: c, hw, lo: c - hw, hi: c + hw,
+      puff: 0.075 * (has('fole') ? 1.3 : 1) * (sk('c2') ? 1.25 : 1), bel: 0, belV: 0, flare: 0, ev: null, evT: 2.5 + rand() * 1.5, side: 0, flipA: 0, falhas: 0 });
     SND.setDuck(0.55);
+  };
+  // cada toque é uma bombeada do fole
+  PRESS.heat = () => {
+    if (s.done) return;
+    s.belV = 10; s.flare = 1;
+    s.T = clamp(s.T + s.puff * (1 - s.T * 0.4), 0, 1);
+    SND.fx.bellows();
+    for (let i = 0; i < 8; i++) parts.push({ x: 122, y: 165 + rand() * 4, vx: 110 + rand() * 70, vy: (rand() - 0.5) * 12, l: 0, m: 0.3, c: 'rgba(255,230,190,0.55)', s: 1, gr: 0, tr: 1 });
+  };
+  PRESS2.heat = () => {
+    if (s.done) return;
+    s.flipA = 0.3; SND.fx.flip();
+    if (s.ev && s.ev.k === 'virar') { s.ev = null; s.side = 0; judge(200, 70, 'VIROU NA HORA!', PAL.gold[4]); }
   };
   UPD.heat = dt => {
     if (s.done) return;
-    s.tot += dt;
-    s.T = clamp(s.T + (s.held ? s.rise * (1 - s.T * 0.35) : -(s.T > 0.25 ? 0.13 : 0.04)) * dt, 0.05, 1);
-    if (s.held) { s.bt += dt; if (s.bt > 0.45) { s.bt = 0; SND.fx.bellows(); } }
+    s.tot += dt; s.flare = Math.max(0, s.flare - dt * 2.5); s.flipA = Math.max(0, s.flipA - dt);
+    s.bel += s.belV * dt; s.belV -= 34 * dt; if (s.bel <= 0) { s.bel = 0; s.belV = 0; } if (s.bel >= 1) { s.bel = 1; s.belV = Math.min(s.belV, 0); }
+    // nos metais nobres a faixa ideal "respira"
+    const c = s.c0 + (s.tier >= 2 ? Math.sin(s.tot * (0.35 + s.tier * 0.12)) * 0.045 * (s.tier - 1) : 0); s.lo = c - s.hw; s.hi = c + s.hw;
+    // perda de calor; a corrente de ar acelera, a brasa viva sobe sozinha
+    const efeito = s.ev && s.ev.t > 0.9 ? s.ev.k : null;
+    let dec = 0.05 + s.T * 0.11;
+    if (efeito === 'vento') dec *= 2.6; else if (efeito === 'brasa') dec = -0.05;
+    s.T = clamp(s.T - dec * dt, 0.05, 1);
+    s.PT += (s.T - s.PT) * Math.min(1, dt * 1.8);
+    // eventos
+    s.evT -= dt;
+    if (!s.ev && s.evT <= 0 && s.prog < 0.9) {
+      const k = pick(['vento', 'brasa', 'virar']); s.ev = { k, t: 0, d: k === 'virar' ? 2.8 - s.tier * 0.25 : 2.2 };
+      s.evT = 5 - s.tier * 0.6 + rand() * 3;
+    }
+    if (s.ev) {
+      s.ev.t += dt;
+      if (efeito === 'vento' && rand() < 0.6) parts.push({ x: 300 + rand() * 20, y: 100 + rand() * 80, vx: -180 - rand() * 80, vy: (rand() - 0.5) * 20, l: 0, m: 0.6, c: 'rgba(200,215,235,0.5)', s: 1, gr: 0, tr: 1 });
+      if (efeito === 'brasa' && rand() < 0.6) spark(150 + rand() * 100, 184, 1, PAL.fire[5], -Math.PI / 2);
+      if (s.ev.k === 'virar') s.side = Math.min(1, s.ev.t / s.ev.d);
+      if (s.ev.t >= s.ev.d + (s.ev.k === 'virar' ? 0 : 0.9)) {
+        if (s.ev.k === 'virar') { s.falhas++; s.prog = Math.max(0, s.prog - 0.18); judge(200, 70, 'UM LADO QUEIMOU!', PAL.red[4]); SND.fx.crack(); }
+        s.ev = null; s.side = 0;
+      }
+    }
     const inZ = s.T >= s.lo && s.T <= s.hi;
-    if (inZ) { s.prog += 0.3 * dt; s.inZ += dt; } else if (s.T > 0.9) { s.burn += dt; s.prog -= 0.14 * dt; if (rand() < 0.3) spark(200 + (rand() - 0.5) * 60, 170, 1); } else s.prog -= 0.03 * dt;
+    if (inZ && s.tz === undefined) s.tz = s.tot;
+    if (inZ) { s.prog += (0.13 - s.tier * 0.008) * (s.ev && s.ev.k === 'virar' ? 0.4 : 1) * dt; s.inZ += dt; }
+    else if (s.T > 0.9) { s.burn += dt; s.prog -= 0.14 * dt; if (rand() < 0.3) spark(200 + (rand() - 0.5) * 60, 170, 1); }
+    else s.prog -= 0.04 * dt;
     s.prog = clamp(s.prog, 0, 1);
-    if (rand() < 0.2 + s.T) ember(150 + rand() * 100, 180, 1.4);
-    if (s.prog >= 1) { const sc = clamp(s.inZ / s.tot * 1.3 - s.burn * 0.1, 0.25, 1); judge(200, 70, sc > 0.85 ? 'CALOR PERFEITO!' : sc > 0.6 ? 'BOM CALOR' : 'CALOR IRREGULAR', sc > 0.85 ? PAL.gold[4] : PAL.parch[4]); SND.fx.good(); end(sc); }
-    else if (s.tot > 35) { judge(200, 70, 'O METAL ESFRIOU', PAL.red[4]); end(clamp(s.prog * 0.6, 0.2, 0.6)); }
+    if (rand() < 0.25 + s.T + s.flare) ember(150 + rand() * 100, 180, 1.2 + s.flare);
+    if (s.prog >= 1) { const sc = clamp(s.inZ / Math.max(1, s.tot - (s.tz || 0)) * 1.05 - s.burn * 0.1 - s.falhas * 0.08, 0.25, 1); judge(200, 70, sc > 0.85 ? 'CALOR PERFEITO!' : sc > 0.6 ? 'BOM CALOR' : 'CALOR IRREGULAR', sc > 0.85 ? PAL.gold[4] : PAL.parch[4]); SND.fx.good(); end(sc); }
+    else if (s.tot > 45) { judge(200, 70, 'O METAL ESFRIOU', PAL.red[4]); end(clamp(s.prog * 0.6, 0.2, 0.6)); }
   };
-  PRESS.heat = () => { s.held = true; SND.fx.bellows(); s.bt = 0; };
-  REL.heat = () => { s.held = false; };
   DRAW.heat = t => {
     g.drawImage(forgeBG(), 0, 0);
-    drawFire(140, 194, forgeMask, 0.45 + s.T * 0.95, t, 120, 110);
-    for (let i = 0; i < 120; i++) { g.fillStyle = (i * 7 + Math.floor(t * 5)) % 6 ? PAL.coal[1 + (i % 2)] : PAL.fire[3]; g.fillRect(140 + i, 188 + Math.round(Math.sin(i * 1.3) * 1.5), 1, 8); }
-    g.fillStyle = PAL.ink; g.fillRect(164, 177, 74, 10); g.fillStyle = heatColor(s.T); g.fillRect(165, 178, 72, 8); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(165, 178, 72, 2);
-    g.fillStyle = PAL.iron[2]; g.fillRect(236, 180, 70, 3); g.fillRect(300, 176, 4, 12);
-    drawBellows(s.held ? 1 : 0);
-    if (s.held && rand() < 0.6) parts.push({ x: 140, y: 165 + rand() * 4, vx: 60 + rand() * 40, vy: (rand() - 0.5) * 8, l: 0, m: 0.3, c: 'rgba(255,220,160,0.5)', s: 1, gr: 0 });
+    // a fornalha ilumina a parede conforme o calor
+    const gl = g.createRadialGradient(200, 175, 10, 200, 160, 140 + s.T * 70);
+    gl.addColorStop(0, 'rgba(255,' + (110 + s.T * 90 | 0) + ',40,' + (0.16 + s.T * 0.24 + s.flare * 0.14) + ')'); gl.addColorStop(1, 'rgba(255,110,40,0)');
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = gl; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
+    drawFire(140, 194, forgeMask, 0.45 + s.T * 0.95 + s.flare * 0.35, t, 120, 110);
+    // carvões que pulsam com o calor
+    for (let i = 0; i < 40; i++) {
+      const x = 140 + i * 3, yy = 187 + (i * 5) % 3, pul = 0.5 + 0.5 * Math.sin(t * 3 + i * 1.7);
+      g.fillStyle = PAL.coal[1 + (i % 2)]; g.fillRect(x, yy, 3, 9);
+      if (pul * (s.T + s.flare * 0.5) > 0.4) { g.fillStyle = PAL.fire[pul > 0.85 ? 4 : 3]; g.fillRect(x + 1, yy + 1, 1, 2); }
+    }
+    // a peça: cor segue o calor dela; se um lado esquenta mais, aparece o degradê
+    const px = 165, pw = 72, fk = s.flipA > 0 ? Math.abs(Math.cos(Math.PI * (1 - s.flipA / 0.3))) : 1, ph = Math.max(1, Math.round(8 * fk)), py = 178 + ((8 - ph) >> 1);
+    const hg = g.createRadialGradient(px + pw / 2, py + 4, 2, px + pw / 2, py + 4, 46); hg.addColorStop(0, rgba(heatColor(s.PT), 0.35)); hg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = hg; g.fillRect(px - 50, py - 46, pw + 100, 92); g.globalCompositeOperation = 'source-over';
+    g.fillStyle = PAL.ink; g.fillRect(px - 1, py - 1, pw + 2, ph + 2);
+    for (let r = 0; r < ph; r++) { g.fillStyle = heatColor(clamp(s.PT + s.side * (0.25 - r / Math.max(1, ph - 1) * 0.5), 0, 1)); g.fillRect(px, py + r, pw, 1); }
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(px, py, pw, 1);
+    g.fillStyle = PAL.iron[2]; g.fillRect(236, 180, 70, 3); g.fillRect(300, 176, 4, 12); g.fillStyle = PAL.iron[4]; g.fillRect(236, 180, 70, 1);
+    drawBellows(s.bel);
     drawParts();
     vignette();
     // termômetro
     const tx = 330, ty = 52, th = 134;
     frame(tx, ty, 18, th);
     const grd = g.createLinearGradient(0, ty + th, 0, ty); for (let i = 0; i <= 10; i++) grd.addColorStop(i / 10, heatColor(i / 10)); g.fillStyle = grd; g.globalAlpha = 0.25; g.fillRect(tx, ty, 18, th); g.globalAlpha = 1;
-    g.fillStyle = heatColor(s.T); const fh = Math.round(th * s.T); g.fillRect(tx + 3, ty + th - fh, 12, fh);
+    g.fillStyle = heatColor(s.T); const fh = Math.round(th * s.T); g.fillRect(tx + 3, ty + th - fh, 12, fh); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(tx + 3, ty + th - fh, 2, fh);
     const zy0 = ty + th - Math.round(th * s.hi), zy1 = ty + th - Math.round(th * s.lo);
     g.fillStyle = PAL.gold[4]; g.fillRect(tx - 6, zy0, 5, 2); g.fillRect(tx - 6, zy1 - 1, 5, 2); g.fillRect(tx - 6, zy0, 2, zy1 - zy0); g.fillRect(tx + 19, zy0, 5, 2); g.fillRect(tx + 19, zy1 - 1, 5, 2); g.fillRect(tx + 22, zy0, 2, zy1 - zy0);
     g.fillStyle = 'rgba(200,40,30,0.5)'; g.fillRect(tx, ty, 18, Math.round(th * 0.1));
@@ -2247,6 +2319,13 @@ const MINI = (() => {
     drawText(g, s.T > 0.9 ? 'QUEIMANDO!' : inZ ? 'ZONA IDEAL' : s.T < s.lo ? 'FRIO' : 'QUENTE DEMAIS', 339, 206, s.T > 0.9 ? PAL.red[4] : inZ ? PAL.gold[4] : PAL.parch[3], 'center');
     drawText(g, 'MATURAÇÃO', 200, 216, PAL.parch[4], 'center');
     bar(130, 226, 140, 6, s.prog, inZ ? PAL.gold[3] : PAL.fire[2]);
+    // avisos de evento
+    if (s.ev) {
+      const aviso = s.ev.t < 0.9 && s.ev.k !== 'virar', pisca = Math.floor(t * 6) % 2 === 0;
+      const txt = s.ev.k === 'vento' ? (aviso ? 'CORRENTE DE AR CHEGANDO!' : 'VENTO! BOMBEIE MAIS') : s.ev.k === 'brasa' ? (aviso ? 'O CARVÃO VAI ESTALAR!' : 'BRASA VIVA! SEGURE O FOLE') : 'VIRE A PEÇA! (F / CLIQUE DIREITO)';
+      if (pisca || !aviso) drawText(g, txt, 200, 50, s.ev.k === 'vento' ? '#a8d0f0' : s.ev.k === 'brasa' ? PAL.fire[5] : PAL.gold[5], 'center');
+      if (s.ev.k === 'virar') bar(150, 62, 100, 4, 1 - s.ev.t / s.ev.d, PAL.gold[4]);
+    }
   };
 
   // ================================================================== MARTELAR — O CORAÇÃO DA FORJA
@@ -2266,8 +2345,9 @@ const MINI = (() => {
     });
     return hammerSpr;
   }
-  function drawHammer(th) {
+  function drawHammer(th, fantasma) {
     g.save(); g.imageSmoothingEnabled = false; g.translate(HP[0], HP[1]); g.rotate(th); g.drawImage(hammerSprite(), -131, -21); g.restore();
+    if (fantasma) return;
     // braço do ferreiro (manga + luva) segurando o cabo
     g.save(); g.translate(HP[0], HP[1]); g.rotate(th * 0.3);
     const d = new Pix(g);
@@ -2396,7 +2476,7 @@ const MINI = (() => {
     judge(70, 150, txt, col);
     if (n.kind === 'flip') { SND.fx.flip(); spark(STRIKE[0] - 30, STRIKE[1] + 4, 6, '#9fd4ff'); floatText(STRIKE[0] - 30, 80, 'VIRA!', '#9fd4ff'); }
     else {
-      SND.fx.anvil(v, anvilPitch(n));
+      SND.fx.anvil(v, anvilPitch(n)); s.wave = 1;
       spark(STRIKE[0], STRIKE[1], 10 + v * 12 + (s.fever ? 16 : 0), s.fever ? PAL.gold[5] : LANE_COL[n.lane]);
       floatText(STRIKE[0] + 24, 74 - n.lane * 6, NOTE_NAME[n.lane] + '!', LANE_COL[n.lane]);
       shake = 1.5 + v * 2 + (3 - n.lane) * 0.4 + (s.fever ? 1.5 : 0);
@@ -2405,7 +2485,7 @@ const MINI = (() => {
   function strike(kind, lane) {
     if (s.done) return;
     const now = clock() - SET.offset / 1000;
-    if (kind === 'flip') { s.flipA = 0.3; s.side = -s.side; } else { s.held = true; s.strike = 0.11; }
+    if (kind === 'flip') { s.flipA = 0.3; s.side = -s.side; } else { s.held = true; s.thPrev = s.th; s.strike = 0.11; }
     let best = null, bd = 9, outra = null, od = 9;
     s.notes.forEach(n => {
       if (n.st !== 0 || (n.kind === 'flip') !== (kind === 'flip')) return;
@@ -2424,7 +2504,7 @@ const MINI = (() => {
   UPD.hammer = dt => {
     if (s.done) return;
     const now = clock() - SET.offset / 1000;
-    s.strike = Math.max(0, s.strike - dt); s.flipA = Math.max(0, s.flipA - dt);
+    s.strike = Math.max(0, s.strike - dt); s.flipA = Math.max(0, s.flipA - dt); s.wave = Math.max(0, (s.wave || 0) - dt * 5);
     let segurando = false;
     s.notes.forEach(n => {
       // o coro canta cada sílaba na altura da nota (agendado pouco antes, para não pesar)
@@ -2469,7 +2549,15 @@ const MINI = (() => {
     g.drawImage(anvilBG(), 0, 0);
     const done = s.notes.filter(n => n.st === 1 || n.st === -1).length / s.notes.length;
     drawPiece(done, now);
+    // rastro do martelo descendo + onda de impacto e clarão na peça
+    if (s.strike > 0.05 && s.thPrev > 0.04) { g.globalAlpha = 0.3; drawHammer(s.thPrev * 0.55, true); g.globalAlpha = 0.15; drawHammer(s.thPrev, true); g.globalAlpha = 1; }
     drawHammer(s.th);
+    if (s.wave > 0) {
+      const k = 1 - s.wave; g.globalAlpha = s.wave; g.strokeStyle = '#fff2c0'; g.lineWidth = 1;
+      g.beginPath(); g.ellipse(STRIKE[0], STRIKE[1] + 6, 6 + k * 36, 2 + k * 9, 0, 0, 6.2832); g.stroke();
+      if (s.wave > 0.6) { g.globalAlpha = (s.wave - 0.6) * 1.6; g.fillStyle = '#fffbe8'; g.fillRect(STRIKE[0] - 34, 95, 66, 7); }
+      g.globalAlpha = 1;
+    }
     const gl = g.createRadialGradient(STRIKE[0], 100, 4, STRIKE[0], 100, s.fever ? 90 : 60);
     gl.addColorStop(0, s.fever ? 'rgba(255,190,80,0.4)' : 'rgba(255,140,40,0.28)'); gl.addColorStop(1, 'rgba(255,140,40,0)');
     g.globalCompositeOperation = 'lighter'; g.fillStyle = gl; g.fillRect(100, 10, 250, 170); g.globalCompositeOperation = 'source-over';
@@ -2518,7 +2606,7 @@ const MINI = (() => {
     drawFloats();
   };
 
-  // ================================================================== TEMPERAR
+  // ================================================================== TEMPERAR (3 fases: cor, agitar, tirar)
   function troughBG() {
     if (bgs.trough) return bgs.trough;
     const c = canvasOf(W, H), x = c.getContext('2d'); x.drawImage(wallBG('w3', 41), 0, 0);
@@ -2530,52 +2618,115 @@ const MINI = (() => {
     }), 0, 0);
     bgs.trough = c; return c;
   }
+  const QY0 = 104, QY1 = 147;   // peça no ar / mergulhada
   INIT.quench = () => {
     s.step = 'quench';
-    const M = metal();
-    Object.assign(s, { p: 0, c: 0.6, hw: M.qw * (has('tanque') ? 1.4 : 1) * (sk('r1') ? 1.25 : 1), v: 1 / (3.4 - (M.bpm || 0) / 20), plunge: -1, py: 104 });
+    const M = metal(), tier = tierOf();
+    Object.assign(s, { tier, phase: 'cor', p: 0, c: 0.6, hw: M.qw * (has('tanque') ? 1.4 : 1) * (sk('r1') ? 1.25 : 1), v: 1 / (3.4 - (M.bpm || 0) / 20),
+      py: QY0, tq: 0, sc1: 0, sc2: 0, sc3: 0, ag: [], vap: 1, onda: 0, bob: 0, calor: 1 });
     SND.setDuck(0.5);
   };
+  function mergulhar() {
+    s.phase = 'agitar'; s.tq = 0; s.onda = 1;
+    SND.fx.hiss(); steam(200, 142, 30, 90);
+    for (let i = 0; i < 26; i++) gota(150 + rand() * 100, 144, (rand() - 0.5) * 120, -60 - rand() * 90);
+    const n = 4 + s.tier, iv = 0.78 - s.tier * 0.07, jit = 0.06 * s.tier;
+    let tt = 1.1; s.ag = [];
+    for (let i = 0; i < n; i++) { s.ag.push({ t: tt, v: -1 }); tt += iv + (rand() - 0.5) * jit; }
+  }
+  function tirar() {
+    s.phase = 'fim';
+    const sc = clamp(0.5 * s.sc1 + 0.3 * s.sc2 + 0.2 * s.sc3, 0.1, 1);
+    judge(200, 70, sc >= 0.9 ? 'TÊMPERA PERFEITA!' : sc >= 0.7 ? 'BOA TÊMPERA' : 'TÊMPERA IRREGULAR', sc >= 0.7 ? PAL.gold[4] : PAL.parch[4]);
+    if (sc >= 0.9) SND.fx.good();
+    end(sc);
+  }
   PRESS.quench = () => {
-    if (s.done || s.plunge >= 0) return;
-    s.plunge = 0; const d = Math.abs(s.p - s.c);
-    s.score = d <= s.hw ? 1 - d / s.hw * 0.25 : Math.max(0.15, 0.72 - (d - s.hw) * 2.4);
-    SND.fx.hiss(); steam(200, 150, 40);
-    judge(200, 60, s.score >= 0.9 ? 'TÊMPERA PERFEITA!' : s.score >= 0.7 ? 'BOA TÊMPERA' : s.p < s.c ? 'QUENTE DEMAIS' : 'FRIO DEMAIS', s.score >= 0.7 ? PAL.gold[4] : PAL.parch[4]);
-    end(s.score);
+    if (s.done) return;
+    if (s.phase === 'cor') {
+      const d = Math.abs(s.p - s.c);
+      s.sc1 = d <= s.hw ? 1 - d / s.hw * 0.25 : Math.max(0.15, 0.72 - (d - s.hw) * 2.4);
+      judge(200, 74, s.sc1 >= 0.9 ? 'COR PERFEITA!' : s.sc1 >= 0.7 ? 'BOA COR' : s.p < s.c ? 'QUENTE DEMAIS' : 'FRIO DEMAIS', s.sc1 >= 0.7 ? PAL.gold[4] : PAL.parch[4]);
+      mergulhar();
+    } else if (s.phase === 'agitar') {
+      const b = s.ag.filter(x => x.v < 0).sort((a, c) => Math.abs(a.t - s.tq) - Math.abs(c.t - s.tq))[0];
+      s.bob = 0.25;
+      for (let i = 0; i < 6; i++) bolha(170 + rand() * 60, 150);
+      if (b && Math.abs(b.t - s.tq) <= 0.15) {
+        const a = Math.abs(b.t - s.tq); b.v = a <= 0.06 ? 1 : a <= 0.11 ? 0.8 : 0.5;
+        judge(200, 74, b.v === 1 ? 'PERFEITO' : b.v > 0.7 ? 'BOM' : 'QUASE', b.v === 1 ? PAL.gold[5] : PAL.parch[4]);
+        steam(200, 142, 8, 80); SND.fx.flip(); s.onda = 0.7;
+      } else { judge(200, 74, 'FORA DO RITMO', PAL.red[4]); SND.fx.thud(); }
+    } else if (s.phase === 'vapor') {
+      const z = s.vap;
+      s.sc3 = z >= 0.08 && z <= 0.24 ? 1 : z > 0.24 ? clamp(1 - (z - 0.24) * 2.2, 0.3, 0.9) : 0.55;
+      judge(200, 74, s.sc3 === 1 ? 'TIROU NA HORA!' : z > 0.24 ? 'TIROU CEDO' : 'TIROU TARDE', s.sc3 === 1 ? PAL.gold[5] : PAL.parch[4]);
+      tirar();
+    }
   };
   UPD.quench = dt => {
-    if (s.plunge >= 0) { s.plunge += dt; s.py = Math.min(158, s.py + dt * 160); if (rand() < 0.6) steam(200, 150, 2); return; }
-    s.p += s.v * dt;
-    if (s.p >= 1) { s.p = 1; PRESS.quench(); }
+    s.onda = Math.max(0, s.onda - dt * 1.2); s.bob = Math.max(0, s.bob - dt * 2);
+    if (s.phase === 'cor') { s.p += s.v * dt * (1 + s.tier * 0.08); s.calor = Math.max(0.05, 0.98 - s.p * 0.9); if (s.p >= 1) { s.p = 1; PRESS.quench(); } return; }
+    if (s.phase === 'fim') { s.py = Math.max(QY0, s.py - dt * 160); return; }
+    s.py = Math.min(QY1, s.py + dt * 220);
+    s.calor = Math.max(0.05, s.calor - dt * (s.phase === 'agitar' ? 0.12 : 0.2));
+    if (s.py >= QY1 - 2 && rand() < 0.5 + s.vap * 0.5) bolha(160 + rand() * 90, 150);
+    if (rand() < s.vap * 0.5) steam(200, 142, 1, 100);
+    if (s.phase === 'agitar') {
+      s.tq += dt;
+      s.ag.forEach(b => { if (b.v < 0 && s.tq - b.t > 0.15) { b.v = 0; judge(200, 74, 'ESQUECEU DE AGITAR', PAL.red[4]); } });
+      if (s.ag.every(b => b.v >= 0) && s.tq > s.ag[s.ag.length - 1].t + 0.35) { s.sc2 = s.ag.reduce((a, b) => a + b.v, 0) / s.ag.length; s.phase = 'vapor'; s.vap = 1; }
+    } else if (s.phase === 'vapor') {
+      s.vap -= dt * (0.32 + s.tier * 0.06);
+      if (s.vap <= 0) { s.vap = 0; s.sc3 = 0.3; judge(200, 74, 'ESFRIOU DEMAIS: QUEBRADIÇA', PAL.red[4]); tirar(); }
+    }
   };
   DRAW.quench = t => {
     g.drawImage(troughBG(), 0, 0);
-    const d = new Pix(g), wo = Math.floor(t * 3);
-    for (let i = 0; i < 12; i++) d.r(64 + ((i * 37 + wo * 7) % 270), 145 + (i % 3) * 3, 5, 1, PAL.water[3]);
-    const col = heatColor(Math.max(0.05, 0.98 - s.p * 0.9) * (s.plunge >= 0 ? Math.max(0.1, 1 - s.plunge * 1.5) : 1));
-    const py = Math.round(s.py);
-    // peça (barra afunilada) presa pela tenaz
-    d.poly([[139, py + 5], [152, py - 1], [262, py - 1], [262, py + 11], [152, py + 11]], PAL.ink); d.poly([[141, py + 5], [153, py], [261, py], [261, py + 10], [153, py + 10]], col);
-    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(153, py, 108, 2);
+    const d = new Pix(g), py = Math.round(s.py - s.bob * 10 * Math.sin(s.bob * 30));
+    // brilho do metal quente refletido na água
+    if (s.py > QY0 + 20) { const gl = g.createRadialGradient(205, 150, 2, 205, 150, 90); gl.addColorStop(0, rgba(heatColor(s.calor), 0.3)); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.globalCompositeOperation = 'lighter'; g.fillStyle = gl; g.fillRect(100, 100, 210, 100); g.globalCompositeOperation = 'source-over'; }
+    // peça: a ponta esfria antes do talão
+    d.poly([[139, py + 5], [152, py - 1], [262, py - 1], [262, py + 11], [152, py + 11]], PAL.ink);
+    for (let x = 141; x <= 261; x++) { const k = (x - 141) / 120; g.fillStyle = heatColor(clamp(s.calor - (1 - k) * 0.14, 0.05, 1)); const top = x < 153 ? Math.round(py + 5 - (x - 141) / 12 * 5) : py, bot = x < 153 ? Math.round(py + 5 + (x - 141) / 12 * 5) : py + 10; g.fillRect(x, top, 1, bot - top + 1); }
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(153, py, 108, 1);
+    // tenaz
     d.line(256, py - 2, 400, py - 46, PAL.ink); d.line(256, py - 1, 400, py - 45, PAL.iron[4]); d.line(256, py, 400, py - 44, PAL.iron[2]);
     d.line(256, py + 11, 400, py - 30, PAL.ink); d.line(256, py + 12, 400, py - 29, PAL.iron[3]); d.line(256, py + 13, 400, py - 28, PAL.iron[1]);
     d.r(250, py - 3, 12, 3, PAL.iron[3]); d.r(250, py + 10, 12, 3, PAL.iron[2]); d.circ(272, py, 2, PAL.iron[5]);
-    if (s.plunge >= 0 && s.py >= 142) { g.fillStyle = PAL.water[1]; g.fillRect(136, 144, 130, 10); g.fillStyle = PAL.water[3]; g.fillRect(136, 144, 130, 1); }
+    // água por cima do que está mergulhado, com ondas
+    g.drawImage(troughBG(), 0, 155, W, 85, 0, 155, W, 85);
+    g.fillStyle = 'rgba(30,80,110,0.45)'; g.fillRect(58, 146, 284, 9);
+    for (let x = 58; x < 342; x++) { const y = 145 + Math.round(Math.sin(t * 4 + x * 0.09) * 0.6 + Math.sin(t * 9 - x * 0.2) * s.onda * 2.2); g.fillStyle = PAL.water[3]; g.fillRect(x, y, 1, 1); }
+    for (let i = 0; i < 12; i++) d.r(64 + ((i * 37 + Math.floor(t * 3) * 7) % 270), 148 + (i % 3) * 2, 4, 1, PAL.water[2]);
+    // anéis de "agite" fechando sobre a peça
+    if (s.phase === 'agitar') s.ag.forEach(b => { const dt2 = b.t - s.tq; if (b.v < 0 && dt2 > -0.15 && dt2 < 0.7) { const r = 10 + Math.max(0, dt2) / 0.7 * 44; pcirc(200, 146, r, dt2 < 0.12 ? PAL.gold[5] : PAL.parch[4]); pcirc(200, 146, r + 1, PAL.ink); } });
+    if (s.phase === 'agitar') { pcirc(200, 146, 10, PAL.gold[3]); pcirc(200, 146, 9, PAL.gold[4]); }
     drawParts(); vignette();
-    // medidor de cor
-    const gx = 90, gy = 46, gw = 220;
-    frame(gx, gy, gw, 10);
-    for (let i = 0; i < gw; i++) { g.fillStyle = heatColor(Math.max(0.05, 0.98 - i / gw * 0.9)); g.fillRect(gx + i, gy, 1, 10); }
-    const z0 = gx + Math.round((s.c - s.hw) * gw), z1 = gx + Math.round((s.c + s.hw) * gw);
-    g.fillStyle = PAL.gold[4]; g.fillRect(z0, gy - 4, 2, 18); g.fillRect(z1 - 1, gy - 4, 2, 18); g.fillRect(z0, gy - 4, z1 - z0, 1); g.fillRect(z0, gy + 13, z1 - z0, 1);
-    const cx = gx + Math.round(s.p * gw); g.fillStyle = PAL.ink; g.fillRect(cx - 3, gy + 12, 7, 6); g.fillStyle = PAL.parch[4]; g.fillRect(cx - 2, gy + 13, 5, 2); g.fillRect(cx - 1, gy + 15, 3, 2); g.fillRect(cx, gy - 2, 1, 14);
-    drawText(g, 'COR DO METAL', 200, 32, PAL.gold[4], 'center');
-    drawText(g, 'BRANCO', gx, gy + 22, PAL.parch[3]); drawText(g, 'CEREJA', (z0 + z1) / 2, gy + 22, PAL.red[4], 'center'); drawText(g, 'FRIO', gx + gw, gy + 22, PAL.parch[3], 'right');
+    const gx = 90, gy = 54, gw = 220;
+    if (s.phase === 'cor') {
+      frame(gx, gy, gw, 10);
+      for (let i = 0; i < gw; i++) { g.fillStyle = heatColor(Math.max(0.05, 0.98 - i / gw * 0.9)); g.fillRect(gx + i, gy, 1, 10); }
+      const z0 = gx + Math.round((s.c - s.hw) * gw), z1 = gx + Math.round((s.c + s.hw) * gw);
+      g.fillStyle = PAL.gold[4]; g.fillRect(z0, gy - 4, 2, 18); g.fillRect(z1 - 1, gy - 4, 2, 18); g.fillRect(z0, gy - 4, z1 - z0, 1); g.fillRect(z0, gy + 13, z1 - z0, 1);
+      const cx = gx + Math.round(s.p * gw); g.fillStyle = PAL.ink; g.fillRect(cx - 3, gy + 12, 7, 6); g.fillStyle = PAL.parch[4]; g.fillRect(cx - 2, gy + 13, 5, 2); g.fillRect(cx - 1, gy + 15, 3, 2); g.fillRect(cx, gy - 2, 1, 14);
+      drawText(g, '1. MERGULHE NO VERMELHO-CEREJA', 200, 40, PAL.gold[4], 'center');
+      drawText(g, 'BRANCO', gx, gy + 22, PAL.parch[3]); drawText(g, 'CEREJA', (z0 + z1) / 2, gy + 22, PAL.red[4], 'center'); drawText(g, 'FRIO', gx + gw, gy + 22, PAL.parch[3], 'right');
+    } else if (s.phase === 'agitar') {
+      drawText(g, '2. AGITE QUANDO O ANEL FECHAR', 200, 40, PAL.gold[4], 'center');
+      s.ag.forEach((b, i) => { const x = 200 - (s.ag.length - 1) * 7 + i * 14; g.fillStyle = PAL.ink; g.fillRect(x - 4, 52, 9, 9); g.fillStyle = b.v < 0 ? '#3a2a20' : b.v >= 0.8 ? PAL.green[3] : b.v > 0 ? PAL.gold[3] : PAL.red[2]; g.fillRect(x - 3, 53, 7, 7); });
+    } else if (s.phase === 'vapor') {
+      drawText(g, '3. TIRE QUANDO O VAPOR QUASE ACABAR', 200, 40, PAL.gold[4], 'center');
+      frame(gx, gy, gw, 10);
+      g.fillStyle = 'rgba(200,210,230,0.75)'; g.fillRect(gx, gy, Math.round(gw * s.vap), 10);
+      const z0 = gx + Math.round(0.08 * gw), z1 = gx + Math.round(0.24 * gw);
+      g.fillStyle = PAL.gold[4]; g.fillRect(z0, gy - 4, 2, 18); g.fillRect(z1 - 1, gy - 4, 2, 18); g.fillRect(z0, gy - 4, z1 - z0, 1); g.fillRect(z0, gy + 13, z1 - z0, 1);
+      drawText(g, 'VAPOR', gx + gw, gy + 22, PAL.parch[3], 'right'); drawText(g, 'AGORA', (z0 + z1) / 2, gy + 22, PAL.gold[4], 'center');
+    }
     drawFloats();
   };
 
-  // ================================================================== AFIAR
+  // ================================================================== AFIAR (8 trechos do fio, pressão por trecho e calor da lâmina)
   function grindBG() {
     if (bgs.grind) return bgs.grind;
     const c = canvasOf(W, H), x = c.getContext('2d'); x.drawImage(wallBG('w4', 51), 0, 0);
@@ -2583,53 +2734,84 @@ const MINI = (() => {
       for (let i = 0; i < 6; i++) { d.line(66 + i, 238, 118 + i, 112, PAL.wood[i < 2 ? 5 : i < 4 ? 4 : 2]); d.line(234 - i, 238, 182 - i, 112, PAL.wood[i < 2 ? 2 : i < 4 ? 3 : 4]); }
       d.r(80, 206, 140, 8, PAL.wood[3]); d.hl(80, 206, 140, PAL.wood[5]); d.hl(80, 213, 140, PAL.wood[1]);
       d.r(94, 188, 112, 18, PAL.wood[3]); d.vplanks(94, 192, 112, 14, PAL.wood, 8, 5); d.r(98, 188, 104, 5, PAL.water[2]); d.hl(98, 188, 104, PAL.water[3]);
-      d.r(222, 114, 40, 8, PAL.iron[3]); d.hl(222, 114, 40, PAL.iron[5]); d.r(258, 96, 6, 26, PAL.iron[3]); d.r(256, 84, 22, 12, PAL.wood[4]); d.hl(256, 84, 22, PAL.wood[6]);
     }), 0, 0);
     bgs.grind = c; return c;
   }
+  const NSEG = 8, BL = 156;
   INIT.sharpen = () => {
     s.step = 'sharpen';
-    Object.assign(s, { p: 0.2, v: 0, zc: 0.5, zh: 0.24 * (sk('r2') ? 1.3 : 1), prog: 0, inZ: 0, tot: 0, sp: 0.8 + ((w.m && MATS[w.m].bpm) || 0) / 30 });
+    const tier = tierOf();
+    Object.assign(s, { tier, p: 0.2, v: 0, seg: new Array(NSEG).fill(0), pos: 0.05, dir: 1, heat: 0, queim: 0, aviso: 0, molha: 0, tot: 0, inZ: 0, rot: 0,
+      zh: 0.24 * (sk('r2') ? 1.3 : 1) * (1 - tier * 0.07), sp: 0.8 + ((w.m && MATS[w.m].bpm) || 0) / 30 });
     s.grind = SND.grind(); SND.setDuck(0.5);
   };
   PRESS.sharpen = () => { s.held = true; };
   REL.sharpen = () => { s.held = false; };
+  PRESS2.sharpen = () => {
+    if (s.done || s.molha > 0) return;
+    s.molha = 0.7; SND.fx.hiss(); steam(240, 120, 10, 30);
+    for (let i = 0; i < 10; i++) gota(250 + rand() * 60, 126, (rand() - 0.5) * 80, -40 - rand() * 60);
+  };
+  const segAt = () => { const xL = 222 - s.pos * BL; return clamp(Math.floor((222 - xL) / BL * NSEG), 0, NSEG - 1); };
+  // a ponta pede mão leve; o talão aguenta mais pressão
+  const zonaC = i => 0.64 - i / (NSEG - 1) * 0.32 + Math.sin(s.tot * s.sp) * (s.tier >= 2 ? 0.07 : 0.03);
   UPD.sharpen = dt => {
     if (s.done) return;
     s.tot += dt;
-    s.zc = 0.5 + 0.32 * Math.sin(s.tot * s.sp + Math.sin(s.tot * 0.43) * 2.2);
+    s.pos += s.dir * (0.14 + s.tier * 0.025) * dt; if (s.pos > 0.97) { s.pos = 0.97; s.dir = -1; } if (s.pos < 0.03) { s.pos = 0.03; s.dir = 1; }
     s.v += (s.held ? 2.6 : -2.1) * dt; s.v *= 0.96; s.p += s.v * dt;
     if (s.p < 0) { s.p = 0; s.v = 0; } if (s.p > 1) { s.p = 1; s.v = 0; }
-    const inZ = Math.abs(s.p - s.zc) <= s.zh / 2;
-    if (inZ) { s.prog += 0.18 * dt; s.inZ += dt; } else s.prog = Math.max(0, s.prog - 0.06 * dt);
-    if (s.grind) s.grind.set(s.p);
-    if (s.p > 0.08 && rand() < s.p * (inZ ? 1.4 : 0.5)) for (let i = 0; i < 2; i++) parts.push({ x: 222, y: 122, vx: -40 - rand() * 120, vy: 10 + rand() * 60, l: 0, m: 0.25 + rand() * 0.35, c: pick([PAL.fire[4], PAL.fire[5], '#fff']), s: 1, gr: 200 });
-    if (s.prog >= 1) { const sc = clamp(0.5 + s.inZ / s.tot * 0.55, 0, 1); judge(200, 60, sc > 0.9 ? 'FIO PERFEITO!' : 'BOM FIO', PAL.gold[4]); SND.fx.good(); end(sc); }
-    else if (s.tot > 18) { judge(200, 60, 'FIO IRREGULAR', PAL.parch[4]); end(clamp(s.prog * 0.85, 0.15, 0.8)); }
+    s.rot += (2.5 + s.p * 7) * dt;
+    const i = segAt(), zc = zonaC(i), inZ = Math.abs(s.p - zc) <= s.zh / 2, contato = s.molha <= 0 && s.p > 0.08;
+    if (s.molha > 0) { s.molha -= dt; s.heat = Math.max(0, s.heat - dt * 1.6); }
+    else s.heat = clamp(s.heat + (s.p * s.p * (0.5 + s.tier * 0.08) - 0.1) * dt, 0, 1.2);
+    if (s.heat >= 1) { s.queim += dt; if (s.aviso <= 0) { judge(200, 52, 'SUPERAQUECEU! MOLHE (F)', PAL.red[4]); s.aviso = 1.5; } }
+    s.aviso -= dt;
+    if (contato && inZ && s.heat < 1) { s.seg[i] = Math.min(1, s.seg[i] + 0.5 * dt); s.inZ += dt; }
+    if (s.grind) s.grind.set(contato ? s.p : 0);
+    if (contato && rand() < s.p * (inZ ? 1.6 : 0.6)) spark(222, 121, 2, s.heat > 0.8 ? PAL.fire[5] : undefined, 2.5);
+    if (rand() < 0.15 + s.p * 0.2) gota(150 + (rand() - 0.5) * 30, 190, (rand() - 0.5) * 60, -30 - rand() * 50);
+    const media = s.seg.reduce((a, b) => a + b, 0) / NSEG;
+    if (s.seg.every(x => x >= 1)) { const sc = clamp(0.5 + s.inZ / s.tot * 0.55 - s.queim * 0.12, 0.2, 1); judge(200, 60, sc > 0.9 ? 'FIO PERFEITO!' : 'BOM FIO', PAL.gold[4]); SND.fx.good(); end(sc); }
+    else if (s.tot > 32) { judge(200, 60, 'FIO IRREGULAR', PAL.parch[4]); end(clamp(media * 0.85 - s.queim * 0.08, 0.15, 0.8)); }
   };
   DRAW.sharpen = t => {
     g.drawImage(grindBG(), 0, 0);
     const d = new Pix(g), cx = 150, cy = 120, r = 72;
     d.circ(cx, cy, r + 2, PAL.ink); d.circ(cx, cy, r, PAL.gstone[1]); d.circ(cx, cy, r - 3, PAL.gstone[2]); d.circ(cx - 6, cy - 6, r - 18, PAL.gstone[3]); d.circ(cx - 14, cy - 14, 20, PAL.gstone[4]);
-    const rot = t * (2 + s.p * 6);
-    for (let i = 0; i < 40; i++) { const a = rot + i * 0.157, rr = 20 + (i * 13) % 48; d.r(Math.round(cx + Math.cos(a) * rr), Math.round(cy + Math.sin(a) * rr), 2, 1, i % 2 ? PAL.gstone[1] : PAL.gstone[4]); }
-    d.circ(cx, cy, 9, PAL.iron[2]); d.circ(cx, cy, 5, PAL.iron[4]); d.r(cx - 2, cy - 2, 2, 2, PAL.iron[6]);
-    // lâmina
-    const push = Math.round(s.p * 6), M = METAL[(w.m) || 'ferro'];
-    d.poly([[222 - push, 116], [380, 108], [380, 124], [222 - push, 126]], PAL.ink); d.poly([[223 - push, 117], [379, 110], [379, 122], [223 - push, 125]], M[2]); d.r(223 - push, 117, 156, 2, M[3]); d.r(330, 104, 50, 24, PAL.leather[2]);
+    // textura e raios girando de verdade com a pedra
+    for (let k = 0; k < 10; k++) { const a = s.rot + k * Math.PI / 5; for (let rr = 26; rr < r - 4; rr += 2) d.p(Math.round(cx + Math.cos(a + rr * 0.01) * rr), Math.round(cy + Math.sin(a + rr * 0.01) * rr), k % 2 ? PAL.gstone[1] : PAL.gstone[2]); }
+    for (let k = 0; k < 24; k++) { const a = s.rot + k * 0.2618; d.r(Math.round(cx + Math.cos(a) * (r - 2)), Math.round(cy + Math.sin(a) * (r - 2)), 1, 1, PAL.gstone[0]); }
+    d.circ(cx, cy, 11, PAL.iron[1]); d.circ(cx, cy, 9, PAL.iron[2]); d.circ(cx, cy, 5, PAL.iron[4]);
+    { const a = s.rot * 1.0; d.line(cx, cy, Math.round(cx + Math.cos(a) * 9), Math.round(cy + Math.sin(a) * 9), PAL.iron[5]); }
+    // lâmina que corre sobre a pedra (ponta à esquerda); o fio brilha conforme é afiado
+    const xL = Math.round(222 - s.pos * BL), lift = s.molha > 0 ? Math.round(Math.sin((0.7 - s.molha) / 0.7 * Math.PI) * 40) : 0, push = Math.round(s.p * 4) - lift * 0;
+    const yb = 116 - lift + (s.molha > 0 ? 0 : 0), M = METAL[w.m || 'ferro'];
+    const tom = s.heat > 0.95 ? '#5a74c8' : s.heat > 0.7 ? '#d8b060' : M[2];
+    g.save(); g.beginPath(); g.rect(219, 0, W, H); g.clip();
+    d.poly([[xL - push, yb + 6], [xL + 10, yb - 2], [xL + BL, yb - 2], [xL + BL, yb + 12], [xL + 10, yb + 12]], PAL.ink);
+    d.poly([[xL + 1 - push, yb + 6], [xL + 10, yb - 1], [xL + BL - 1, yb - 1], [xL + BL - 1, yb + 11], [xL + 10, yb + 11]], tom);
+    d.r(xL + 10, yb - 1, BL - 11, 2, M[3]);
+    for (let k = 0; k < NSEG; k++) { const x0 = xL + 4 + Math.round(k * (BL - 8) / NSEG), x1 = xL + 4 + Math.round((k + 1) * (BL - 8) / NSEG); const v = s.seg[k]; g.fillStyle = v >= 1 ? '#f4f8ff' : 'rgb(' + (90 + v * 140 | 0) + ',' + (94 + v * 140 | 0) + ',' + (104 + v * 140 | 0) + ')'; g.fillRect(x0, yb + 10, x1 - x0, 2); }
+    { const sh = (t * 0.6 % 1) * BL; g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(Math.round(xL + sh), yb - 1, 6, 12); }
+    d.r(xL + BL - 6, yb - 8, 50, 26, PAL.leather[2]); d.hl(xL + BL - 6, yb - 8, 50, PAL.leather[4]); for (let k = 0; k < 50; k += 5) d.vl(xL + BL - 6 + k, yb - 8, 26, PAL.leather[1]);
+    g.restore();
     drawParts(); vignette();
-    // pressão
-    const gx = 356, gy = 52, gh = 144;
+    // medidores: pressão (com a faixa do trecho atual) e calor da lâmina
+    const gx = 356, gy = 52, gh = 144, i = segAt(), zc = zonaC(i);
     frame(gx, gy, 16, gh);
-    const zy = gy + gh - Math.round((s.zc + s.zh / 2) * gh), zhh = Math.round(s.zh * gh);
+    const zy = gy + gh - Math.round((zc + s.zh / 2) * gh), zhh = Math.round(s.zh * gh);
     g.fillStyle = 'rgba(242,196,90,0.45)'; g.fillRect(gx, zy, 16, zhh); g.fillStyle = PAL.gold[4]; g.fillRect(gx, zy, 16, 1); g.fillRect(gx, zy + zhh - 1, 16, 1);
     const my = gy + gh - Math.round(s.p * gh); g.fillStyle = PAL.ink; g.fillRect(gx - 4, my - 2, 24, 5); g.fillStyle = PAL.iron[5]; g.fillRect(gx - 3, my - 1, 22, 3);
     drawText(g, 'PRESSÃO', gx + 8, gy - 12, PAL.gold[4], 'center');
-    drawText(g, 'FIO DA LÂMINA', 150, 214, PAL.parch[4], 'center'); bar(70, 224, 160, 6, s.prog, PAL.gold[3]);
+    const hx = 334; frame(hx, gy, 8, gh); g.fillStyle = s.heat >= 1 ? PAL.red[4] : heatColor(0.3 + s.heat * 0.5); const hh2 = Math.round(Math.min(1, s.heat) * gh); g.fillRect(hx, gy + gh - hh2, 8, hh2);
+    drawText(g, 'CALOR', hx + 4, gy + gh + 6, s.heat >= 1 ? PAL.red[4] : PAL.parch[3], 'center');
+    drawText(g, i < 3 ? 'PONTA: MÃO LEVE' : i > 5 ? 'TALÃO: FIRME' : 'MEIO DA LÂMINA', 150, 40, PAL.parch[4], 'center');
+    drawText(g, 'FIO DA LÂMINA', 150, 214, PAL.parch[4], 'center'); bar(70, 224, 160, 6, s.seg.reduce((a, b) => a + b, 0) / NSEG, PAL.gold[3]);
     drawFloats();
   };
 
-  // ================================================================== FINALIZAR
+  // ================================================================== FINALIZAR (3 golpes de acabamento em pontos diferentes)
   function benchBG() {
     if (bgs.bench) return bgs.bench;
     const c = canvasOf(W, H), x = c.getContext('2d'); x.drawImage(wallBG('w5', 61), 0, 0);
@@ -2645,23 +2827,34 @@ const MINI = (() => {
     }), 0, 0);
     bgs.bench = c; return c;
   }
+  let shineCv = null;
+  function golpes() {
+    const tier = tierOf();
+    s.rings = [0, 1, 2].map(i => ({ x: 176 + rand() * 48, y: 76 + rand() * 48, dur: 1.4 - i * 0.24 - tier * 0.07 }));
+    s.ri = 0; s.rt = 0; s.bonus = 0; s.shine = 0; s.phase = 'strike';
+  }
   INIT.finish = () => {
-    s.step = 'finish'; s.phase = 'assembly';
+    s.step = 'finish'; s.phase = 'assembly'; s.shine = 0;
     SND.setDuck(0.5);
     const R = RECIPES[w.r];
-    if (R.special) { s.phase = 'strike'; s.rt = 0; s.asm = 'padrao'; return; }
+    if (R.special) { s.asm = 'padrao'; golpes(); return; }
     UI.assembly([
       { id: 'padrao', t: 'Montagem padrão', d: 'Cabo e acabamento simples. Sem custo.', ok: true },
       { id: 'couro', t: 'Couro trançado', d: '+4% de qualidade. Gasta 1 couro.', ok: S.mats.couro >= 1 },
       { id: 'ouro', t: 'Ornamento dourado', d: '+15% de valor. Custa 20 moedas.', ok: S.gold >= 20 },
-    ], id => { s.asm = id; if (id === 'couro') S.mats.couro--; if (id === 'ouro') addGold(-20); s.phase = 'strike'; s.rt = 0; UI.hud(); });
+    ], id => { s.asm = id; if (id === 'couro') S.mats.couro--; if (id === 'ouro') addGold(-20); golpes(); UI.hud(); });
   };
+  function proximoGolpe(v, txt, col) {
+    const rg = s.rings[s.ri];
+    s.bonus += v; judge(rg.x, rg.y - 22, txt, col);
+    if (v > 0) { SND.fx.anvil(v > 0.015 ? 1 : 0.7, 1.15 + s.ri * 0.12); spark(rg.x, rg.y, 14 + v * 600); shake = 2 + v * 80; s.shine = 1; } else SND.fx.thud();
+    s.ri++; s.rt = 0;
+    if (s.ri >= s.rings.length) reveal();
+  }
   PRESS.finish = () => {
     if (s.phase !== 'strike') return;
-    const r = 64 - s.rt / 1.4 * 64, d = Math.abs(r - 18);
-    s.bonus = d <= 3 ? 0.05 : d <= 8 ? 0.02 : 0;
-    judge(200, 40, d <= 3 ? 'GOLPE PERFEITO!' : d <= 8 ? 'BOM GOLPE' : 'GOLPE TORTO', d <= 3 ? PAL.gold[5] : PAL.parch[4]);
-    reveal();
+    const rg = s.rings[s.ri], r = 52 - s.rt / rg.dur * 52, d = Math.abs(r - 10);
+    if (d <= 2.5) proximoGolpe(0.02, 'PERFEITO!', PAL.gold[5]); else if (d <= 6) proximoGolpe(0.01, 'BOM', PAL.parch[4]); else proximoGolpe(0, 'TORTO', PAL.red[4]);
   };
   function reveal() {
     s.phase = 'reveal'; s.rv = 0;
@@ -2671,7 +2864,8 @@ const MINI = (() => {
     else { SND.fx.anvil(1, 1.15); spark(200, 100, 30); shake = 4; if (s.item.rar) SND.fx.rare(s.item.rar); else if (s.item.qi >= 3) SND.fx.good(); }
   }
   UPD.finish = dt => {
-    if (s.phase === 'strike') { s.rt += dt; if (s.rt > 1.4) { s.bonus = 0; judge(200, 40, 'SEM FORÇA', PAL.red[4]); reveal(); } }
+    s.shine = Math.max(0, s.shine - dt * 1.6);
+    if (s.phase === 'strike') { s.rt += dt; if (s.rt > s.rings[s.ri].dur) proximoGolpe(0, 'SEM FORÇA', PAL.red[4]); }
     if (s.phase === 'reveal') {
       const p0 = s.rv; s.rv += dt;
       if (s.leg) {
@@ -2696,11 +2890,25 @@ const MINI = (() => {
     const lg2 = s.phase === 'reveal' && s.leg ? clamp(s.rv / 0.8, 0, 1) : 0;
     const col = s.item ? (s.item.rar ? RAR[s.item.rar].col : QUAL[s.item.qi].col) : PAL.fire[4];
     if (s.phase === 'reveal' && !s.leg) { const k = clamp(1 - s.rv / 1.2, 0, 1); const gr = g.createRadialGradient(200, 100, 4, 200, 100, 90); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = 0.5 + 0.3 * k; g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(100, 0, 200, 200); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
-    g.imageSmoothingEnabled = false; g.drawImage(ic, 0, 0, ic.width, ic.height, 164, 64, 72, 72);
+    // a peça flutua levemente; no fim cresce um pouco ao ser revelada
+    const bob = Math.round(Math.sin(t * 2.2) * 2), sz = s.phase === 'reveal' ? 72 + Math.round(Math.min(1, s.rv * 3) * 8) : 72, ix = 200 - sz / 2, iy = 100 - sz / 2 + bob;
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(200, 150, 30 - bob, 4, 0, 0, 6.2832); g.fill();
+    g.imageSmoothingEnabled = false; g.drawImage(ic, 0, 0, ic.width, ic.height, ix, iy, sz, sz);
+    // brilho de polimento atravessando a peça após cada golpe
+    if (s.shine > 0) {
+      const tc = shineCv || (shineCv = canvasOf(96, 96)), tg = tc.getContext('2d'), sx = -30 + (1 - s.shine) * (sz + 60);
+      tg.clearRect(0, 0, 96, 96); tg.imageSmoothingEnabled = false; tg.drawImage(ic, 0, 0, ic.width, ic.height, 0, 0, sz, sz);
+      tg.globalCompositeOperation = 'source-atop'; tg.fillStyle = 'rgba(255,250,225,0.75)';
+      tg.beginPath(); tg.moveTo(sx, 0); tg.lineTo(sx + 12, 0); tg.lineTo(sx - 12, sz); tg.lineTo(sx - 24, sz); tg.fill(); tg.globalCompositeOperation = 'source-over';
+      g.drawImage(tc, 0, 0, sz, sz, ix, iy, sz, sz);
+    }
+    if (s.phase === 'strike' || s.phase === 'reveal') for (let k = 0; k < 4; k++) { const a = t * 1.3 + k * 1.7, on = Math.sin(t * 5 + k * 2) > 0.6; if (on) { const x = ix + 10 + ((k * 23 + Math.floor(a)) % (sz - 20)), y = iy + 10 + ((k * 31 + Math.floor(a * 1.3)) % (sz - 20)); g.fillStyle = '#fffbe8'; g.fillRect(x, y - 2, 1, 5); g.fillRect(x - 2, y, 5, 1); } }
     if (s.phase === 'strike') {
-      const r = 64 - s.rt / 1.4 * 64;
-      pcirc(200, 100, 18, PAL.gold[4]); pcirc(200, 100, 17, PAL.gold[2]);
-      if (r > 1) { pcirc(200, 100, r, PAL.parch[4]); pcirc(200, 100, r + 1, PAL.ink); }
+      const rg = s.rings[s.ri], r = 52 - s.rt / rg.dur * 52;
+      pcirc(rg.x, rg.y, 10, PAL.gold[4]); pcirc(rg.x, rg.y, 9, PAL.gold[2]); g.fillStyle = PAL.gold[5]; g.fillRect(rg.x, rg.y, 1, 1);
+      if (r > 1) { pcirc(rg.x, rg.y, r, PAL.parch[4]); pcirc(rg.x, rg.y, r + 1, PAL.ink); }
+      s.rings.forEach((x, k) => { g.fillStyle = PAL.ink; g.fillRect(186 + k * 10, 176, 7, 7); g.fillStyle = k < s.ri ? PAL.gold[4] : k === s.ri ? PAL.parch[4] : '#3a2a20'; g.fillRect(187 + k * 10, 177, 5, 5); });
+      drawText(g, 'GOLPES DE ACABAMENTO', 200, 42, PAL.gold[4], 'center');
     }
     drawParts();
     vignette();
@@ -2708,12 +2916,12 @@ const MINI = (() => {
       g.fillStyle = 'rgba(0,0,0,' + (0.8 * lg2 * (s.rv < 1.6 ? 1 : Math.max(0.2, 1 - (s.rv - 1.6)))) + ')'; g.fillRect(0, 0, W, H);
       if (s.rv > 1.6) {
         g.globalAlpha = Math.max(0, 1 - (s.rv - 1.6) * 1.4); g.fillStyle = '#ffe9a0'; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
-        if (s.rv < 2.4 && Math.floor(s.rv * 20) % 2 === 0) { let x = 200, y = 0; g.fillStyle = '#fff6c8'; while (y < 96) { const nx2 = x + (rand() - 0.5) * 24, ny = y + 8 + rand() * 6; const dd = new Pix(g); dd.line(x, y, nx2, ny, '#fff6c8'); dd.line(x + 1, y, nx2 + 1, ny, PAL.gold[4]); x = nx2; y = ny; } }
-        g.drawImage(ic, 0, 0, ic.width, ic.height, 164, 64, 72, 72);
+        if (s.rv < 2.4 && Math.floor(s.rv * 20) % 2 === 0) { let x = 200, y = 0; while (y < 96) { const nx2 = x + (rand() - 0.5) * 24, ny = y + 8 + rand() * 6; const dd = new Pix(g); dd.line(x, y, nx2, ny, '#fff6c8'); dd.line(x + 1, y, nx2 + 1, ny, PAL.gold[4]); x = nx2; y = ny; } }
+        g.drawImage(ic, 0, 0, ic.width, ic.height, ix, iy, sz, sz);
         if (s.rv > 2) { drawText(g, 'LENDÁRIA!', 200, 150, PAL.gold[5], 'center'); drawText(g, '«' + s.item.title + '»', 200, 164, PAL.parch[4], 'center'); }
       }
     }
-    if (s.phase === 'reveal' && !s.leg && s.rv > 0.2) { drawText(g, QUAL[s.item.qi].name, 200, 150, QUAL[s.item.qi].col, 'center'); if (s.item.rar) drawText(g, 'PEÇA ' + RAR[s.item.rar].name, 200, 164, RAR[s.item.rar].col, 'center'); }
+    if (s.phase === 'reveal' && !s.leg && s.rv > 0.2) { drawText(g, QUAL[s.item.qi].name, 200, 156, QUAL[s.item.qi].col, 'center'); if (s.item.rar) drawText(g, 'PEÇA ' + RAR[s.item.rar].name, 200, 170, RAR[s.item.rar].col, 'center'); }
     drawFloats();
   };
 
