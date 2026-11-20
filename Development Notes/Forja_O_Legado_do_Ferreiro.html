@@ -2077,7 +2077,7 @@ function toCanvas(e) { const r = cv.getBoundingClientRect(), p = e.touches ? e.t
 // ENTRADA
 // ---------------------------------------------------------------------------
 const ACT_KEYS = ['Space', 'KeyE', 'Enter', 'NumpadEnter'];
-const LANE_KEYS = { KeyS: 0, ArrowDown: 0, KeyA: 1, ArrowLeft: 1, KeyD: 2, ArrowRight: 2, KeyW: 3, ArrowUp: 3 };
+const LANE_KEYS = { Digit1: 0, Numpad1: 0, Digit2: 1, Numpad2: 1, Digit3: 2, Numpad3: 2, Digit4: 3, Numpad4: 3 };
 window.addEventListener('keydown', e => {
   SND.init();
   if (UI.keydown(e)) return;
@@ -2115,7 +2115,7 @@ const MINI = (() => {
   const metal = () => MATS[(w && w.m) || 'ferro'];
   const HINT = {
     heat: 'Segure ESPAÇO (ou o clique) para soprar o fole. Mantenha o calor dentro da faixa dourada até a maturação encher.',
-    hammer: 'W/↑ TIN (agudo) · D/→ TAN · A/← TAM · S/↓ TOM (grave) · ESPAÇO/F: VIRAR · segure as notas longas · 8 seguidos = Fúria',
+    hammer: 'Teclas 1 2 3 4 = TOM (grave) · TAM · TAN · TIN (agudo) · ESPAÇO = virar a peça · segure as notas longas · 8 seguidos = Fúria',
     quench: 'Mergulhe a peça (ESPAÇO / clique) quando a cor do metal chegar ao vermelho-cereja.',
     sharpen: 'Segure para pressionar a lâmina no rebolo. Mantenha o marcador dentro da faixa dourada.',
     finish: 'Golpeie quando o anel encontrar o círculo dourado.',
@@ -2308,7 +2308,7 @@ const MINI = (() => {
   }
   const SEC_NAME = { A: 'I - O PRIMEIRO CALOR', B: 'II - A VIRADA', C: 'III - O CORAÇÃO DA FORJA', F: 'O GOLPE FINAL' };
   // Pauta do Cântico: 4 notas do acorde, do grave (embaixo) ao agudo (em cima). Cada uma tem tecla, som e sílaba.
-  const LANE = ['TOM', 'TAM', 'TAN', 'TIN'], LANE_COL = ['#c8442a', '#f07a3a', '#ffb050', '#ffe08a'], LANE_KEY = ['S', 'A', 'D', 'W'];
+  const LANE = ['TOM', 'TAM', 'TAN', 'TIN'], LANE_COL = ['#c8442a', '#f07a3a', '#ffb050', '#ffe08a'], LANE_KEY = ['1', '2', '3', '4'];
   const LANE_Y = [216, 206, 196, 186], FLIP_Y = 228;
   const PREF = { TIC: 3, TA: 2, CLAM: 2, SHACK: 2, HA: 2, PAH: 1, TUM: 0, BUM: 0, DON: 0, FORJA: 3 };
   INIT.hammer = () => {
@@ -2466,7 +2466,7 @@ const MINI = (() => {
     g.fillStyle = '#10182a'; g.fillRect(8, 222, 384, 14); g.fillStyle = '#2a3a52'; g.fillRect(8, 222, 384, 1);
     for (let b = 0; b < 200; b++) { const bt = s.t0 + b * s.beat, x = hx + (bt - now) * sp; if (x > 8 && x < 392) { g.fillStyle = (b - 4) % 4 === 0 ? '#4a3420' : '#2c1e14'; g.fillRect(Math.round(x), 180, 1, 54); } }
     LANE_Y.forEach((y, i) => drawText(g, LANE[i] + ' ' + LANE_KEY[i], 12, y - 3, LANE_COL[i]));
-    drawText(g, 'VIRA', 12, FLIP_Y - 3, '#6fa8d0');
+    drawText(g, 'VIRA ESP', 12, FLIP_Y - 3, '#6fa8d0');
     g.fillStyle = s.fever ? PAL.gold[5] : PAL.gold[3]; g.fillRect(hx - 1, 178, 3, 58); g.fillStyle = PAL.gold[5]; g.fillRect(hx, 178, 1, 58);
     s.notes.forEach(n => {
       const x = Math.round(hx + (n.t - now) * sp);
