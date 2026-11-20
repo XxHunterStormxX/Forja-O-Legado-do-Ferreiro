@@ -393,6 +393,24 @@ const SND = (() => {
     drum(d, t, v) { tone(d, 'sine', 120, t, 0.3, v, { f2: 42, fd: 0.22 }); noise(d, t, 0.09, v * 0.35, 'lowpass', 900); },
     tamb(d, t, v) { noise(d, t, 0.07, v, 'highpass', 6500); },
     bell(d, m, t, v) { const f = mf(m); tone(d, 'sine', f, t, 2.4, v); tone(d, 'sine', f * 2.76, t, 1.2, v * 0.35); tone(d, 'sine', f * 5.4, t, 0.6, v * 0.15); },
+    harp(d, m, t, v) { const f = mf(m); tone(d, 'triangle', f, t, 2.2, v, { lp: 3000, lp2: 700 }); tone(d, 'sine', f * 2, t, 0.9, v * 0.2); },
+    pad(d, m, t, v, dur) { const f = mf(m); [-8, 0, 7].forEach(dt => tone(d, 'sawtooth', f, t, dur, v * 0.3, { a: Math.min(0.7, dur * 0.35), sus: dur * 0.45, lp: 850, det: dt })); },
+    strings(d, m, t, v, dur) { const f = mf(m); [-10, 7].forEach(dt => tone(d, 'sawtooth', f, t, dur, v * 0.5, { a: Math.min(0.22, dur * 0.3), sus: Math.min(0.35, dur * 0.4), lp: 2400, det: dt, vib: 0.004 })); },
+    cello(d, m, t, v, dur) { tone(d, 'sawtooth', mf(m), t, dur, v, { a: 0.03, sus: Math.min(0.12, dur * 0.4), lp: 900, vib: 0.003 }); tone(d, 'sine', mf(m), t, dur, v * 0.6, { a: 0.02, sus: 0.1 }); },
+    horn(d, m, t, v, dur) { const f = mf(m); tone(d, 'sawtooth', f, t, dur, v, { a: 0.07, sus: Math.min(0.2, dur * 0.4), lp: 650, lp2: 1500, vib: 0.003 }); tone(d, 'sine', f, t, dur, v * 0.5, { a: 0.05, sus: 0.15 }); },
+    choir(d, m, t, v, dur) {
+      const f = mf(m);
+      [-7, 6].forEach(det => {
+        const o = ctx.createOscillator(), gg = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det;
+        gg.gain.setValueAtTime(0.0001, t); gg.gain.linearRampToValueAtTime(v, t + Math.min(0.45, dur * 0.4)); gg.gain.setValueAtTime(v, t + dur * 0.7); gg.gain.linearRampToValueAtTime(0.0001, t + dur);
+        [[730, 1], [1090, 0.5], [2440, 0.18]].forEach(([ff, k]) => { const b = ctx.createBiquadFilter(), bg = ctx.createGain(); b.type = 'bandpass'; b.frequency.value = ff; b.Q.value = 6; bg.gain.value = k * 2.6; o.connect(b); b.connect(bg); bg.connect(gg); });
+        const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 4.6 + Math.random(); lg.gain.value = f * 0.006; l.connect(lg); lg.connect(o.frequency);
+        gg.connect(d); o.start(t); o.stop(t + dur + 0.05); l.start(t); l.stop(t + dur + 0.05);
+      });
+    },
+    taiko(d, t, v) { tone(d, 'sine', 78, t, 0.7, v, { f2: 38, fd: 0.5 }); noise(d, t, 0.18, v * 0.4, 'lowpass', 420); },
+    snare(d, t, v) { noise(d, t, 0.16, v, 'bandpass', 1900, { q: 0.8 }); tone(d, 'triangle', 190, t, 0.08, v * 0.5, { f2: 120 }); },
+    swell(d, t, dur, v) { noise(d, t, dur, v, 'bandpass', 500, { a: dur * 0.9, f2: 5000, q: 0.7 }); },
   };
 
   // ---------- trilhas ----------
@@ -404,33 +422,68 @@ const SND = (() => {
     tk.forEach((x, i) => { if (x === '-') { if (ev.length) ev[ev.length - 1].len++; } else if (x !== '.') ev.push({ step: i, m: pm(x), len: 1 }); });
     return { ev, len: tk.length };
   }
+  // Trilhas em seções (8 compassos cada). mel: 6 passos por compasso; '-' prolonga, '.' pausa.
+  // mel2 '@-12' = a própria melodia transposta. layers: pad, str (cordas), choir (coro), bell.
+  const TEMA1 = 'A4 - - D5 - E5 | F5 - E5 D5 - C5 | D5 - - A4 - - | C5 - B4 A4 - G4 | A4 - - C5 - F5 | E5 - D5 C5 - E5 | D5 - B4 G4 - B4 | D5 - - - - .';
+  const TEMA_MENU = 'E5 - - - D5 C5 | A4 - - - - . | G4 - C5 - E5 - | D5 - - - - . | E5 - A5 - G5 E5 | F5 - E5 - D5 - | B4 - - G#4 - - | A4 - - - - .';
+  const TEMA_NOITE = 'F5 - - E5 - - | E5 - - C5 - - | D5 - - - - . | C5 - - A4 - - | Bb4 - - D5 - - | A4 - - F4 - - | E4 - - C#5 - - | D5 - - - - .';
   const TRACKS = {
     oficina: {
-      sd: 0.2, bar: 6, arp: [0, 1, 2, 3, 2, 1], arpV: 0.11, drone: [38, 45], drum: 'X..x.t', melV: 0.13,
-      chords: 'Dm C Dm Am F C G Dm  Dm C Dm Am F C G Dm  F C G Dm F C Am Dm  Dm C Dm Am F C G Dm',
-      mel: '. . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . ' +
-        'A4 - - D5 - E5 | F5 - E5 D5 - C5 | D5 - - A4 - - | C5 - B4 A4 - G4 | A4 - - C5 - F5 | E5 - D5 C5 - E5 | D5 - B4 G4 - B4 | D5 - - - - . ' +
-        'A5 - G5 F5 - E5 | G5 - F5 E5 - C5 | D5 - E5 F5 - G5 | A5 - - - - . | A5 - G5 F5 - A5 | G5 - E5 C5 - E5 | E5 - D5 C5 - B4 | D5 - - - - . ' +
-        'A4 - - D5 - E5 | F5 - E5 D5 - C5 | D5 - - A4 - - | C5 - B4 A4 - G4 | A4 - - C5 - F5 | E5 - D5 C5 - E5 | D5 - B4 G4 - B4 | D5 - - - - .',
+      sd: 0.2, bar: 6, drone: [38, 45], order: 'A B C B2 D E C A',
+      parts: {
+        A: { chords: 'Dm Dm Bb Bb F F A A', arp: [0, 1, 2, 3, 2, 1], arpI: 'harp', arpV: 0.1, drum: '......', layers: 'pad' },
+        B: { chords: 'Dm C Dm Am F C G Dm', arp: [0, 1, 2, 3, 2, 1], arpV: 0.1, drum: 'X..x.t', bass: 1, melI: 'flute', melV: 0.13, mel: TEMA1 },
+        B2: { chords: 'Dm C Dm Am F C G Dm', arp: [0, 1, 2, 3, 2, 1], arpV: 0.09, drum: 'X..x.t', bass: 1, layers: 'pad', melI: 'flute', melV: 0.13, mel: TEMA1, mel2I: 'harp', mel2V: 0.05, mel2: '@12' },
+        C: {
+          chords: 'F C G Dm F C Am Dm', arp: [0, 2, 1, 3, 2, 1], arpV: 0.09, drum: 'X.tx.t', bass: 1, layers: 'pad', melI: 'strings', melV: 0.11,
+          mel: 'A5 - G5 F5 - E5 | G5 - F5 E5 - C5 | D5 - E5 F5 - G5 | A5 - - - - . | A5 - G5 F5 - A5 | G5 - E5 C5 - E5 | E5 - D5 C5 - B4 | D5 - - - - .',
+          mel2I: 'flute', mel2V: 0.07, mel2: 'F4 - - . . . | E4 - - . . . | B4 - - . . . | F4 - - A4 - - | C5 - - . . . | C5 - - . . . | A4 - - . . . | F4 - - - - .',
+        },
+        D: {
+          chords: 'Bb F C F Bb F Gm A', arp: [0, 1, 2, 1, 2, 1], arpI: 'harp', arpV: 0.08, drum: 'x.....', bass: 1, layers: 'str', melI: 'horn', melV: 0.12,
+          mel: 'D5 - - C5 - Bb4 | A4 - - - - . | G4 - A4 Bb4 - C5 | A4 - - - - . | D5 - - F5 - D5 | C5 - - A4 - . | Bb4 - A4 G4 - Bb4 | A4 - - - - .',
+        },
+        E: { chords: 'Dm C Dm Am F C G Dm', arp: [0, 1, 2, 3, 2, 1], arpV: 0.1, drum: 'X.sx.t', bass: 1, layers: 'str choir', melI: 'flute', melV: 0.14, mel: TEMA1, mel2I: 'strings', mel2V: 0.08, mel2: '@-12' },
+      },
     },
     menu: {
-      sd: 0.27, bar: 6, arp: [0, 2, 1, 3, 2, 1], arpV: 0.1, drone: [33, 40], drum: 'x.....', melV: 0.12,
-      chords: 'Am F C G Am F E Am  Am F C G Am F E Am',
-      mel: '. . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . | . . . . . . ' +
-        'E5 - - - D5 C5 | A4 - - - - . | G4 - C5 - E5 - | D5 - - - - . | E5 - A5 - G5 E5 | F5 - E5 - D5 - | B4 - - G#4 - - | A4 - - - - .',
+      sd: 0.27, bar: 6, drone: [33, 40], order: 'A B C D B A',
+      parts: {
+        A: { chords: 'Am Am F F C C E E', arp: [0, 2, 1, 3, 2, 1], arpI: 'harp', arpV: 0.1, drum: '......', layers: 'pad bell' },
+        B: { chords: 'Am F C G Am F E Am', arp: [0, 2, 1, 3, 2, 1], arpV: 0.1, drum: 'x.....', bass: 1, layers: 'pad', melI: 'flute', melV: 0.12, mel: TEMA_MENU },
+        C: {
+          chords: 'F G Em Am F G E E', arp: [0, 1, 2, 3, 2, 1], arpI: 'harp', arpV: 0.08, drum: 'X.....', bass: 1, layers: 'pad', melI: 'strings', melV: 0.11,
+          mel: 'A4 - - C5 - - | B4 - - D5 - - | G4 - - B4 - E5 | E5 - - - - . | F5 - E5 D5 - C5 | D5 - C5 B4 - D5 | E5 - - G#5 - - | B5 - - - - .',
+        },
+        D: { chords: 'Am F C G Am F E Am', arp: [0, 2, 1, 3, 2, 1], arpV: 0.1, drum: 'X..x..', bass: 1, layers: 'str choir', melI: 'flute', melV: 0.13, mel: TEMA_MENU, mel2I: 'horn', mel2V: 0.08, mel2: '@-12' },
+      },
     },
     noite: {
-      sd: 0.32, bar: 6, arp: [0, 1, 2, 3, 2, 1], arpV: 0.08, drone: [41, 48], drum: '......', melV: 0.09, bell: true,
-      chords: 'F C Dm Am Bb F C F',
-      mel: 'A5 - - - - . | G5 - - - - . | F5 - - - - . | E5 - - - - . | D5 - - F5 - - | C5 - - - - . | E5 - - G5 - - | F5 - - - - .',
+      sd: 0.32, bar: 6, drone: [41, 48], order: 'A B A B2',
+      parts: {
+        A: { chords: 'F C Dm Am Bb F C F', arp: [0, 1, 2, 3, 2, 1], arpI: 'harp', arpV: 0.08, drum: '......', layers: 'bell pad', melI: 'flute', melV: 0.09, mel: 'A5 - - - - . | G5 - - - - . | F5 - - - - . | E5 - - - - . | D5 - - F5 - - | C5 - - - - . | E5 - - G5 - - | F5 - - - - .' },
+        B: { chords: 'Dm Am Bb F Gm Dm A Dm', arp: [0, 1, 2, 3, 2, 1], arpI: 'harp', arpV: 0.07, drum: '......', layers: 'pad', melI: 'strings', melV: 0.07, mel: TEMA_NOITE },
+        B2: { chords: 'Dm Am Bb F Gm Dm A Dm', arp: [0, 1, 2, 3, 2, 1], arpI: 'harp', arpV: 0.07, drum: '......', layers: 'pad choir', melI: 'strings', melV: 0.07, mel: TEMA_NOITE },
+      },
     },
     hunter: {
-      sd: 0.3, bar: 6, arp: [0, 1, 2, 1, 3, 1], arpV: 0.09, drone: [40, 47], drum: 'X.....', melV: 0.13,
-      chords: 'Em F Em D Em F G Em',
-      mel: 'B4 - - - - . | C5 - B4 - A4 - | B4 - - - - . | . . . . . . | E5 - - D5 - - | C5 - - B4 - - | D5 - C5 - B4 - | E4 - - - - .',
+      sd: 0.3, bar: 6, drone: [40, 47], order: 'A B A B',
+      parts: {
+        A: { chords: 'Em F Em D Em F G Em', arp: [0, 1, 2, 1, 3, 1], arpV: 0.09, drum: 'X.....', bass: 1, melI: 'flute', melV: 0.13, mel: 'B4 - - - - . | C5 - B4 - A4 - | B4 - - - - . | . . . . . . | E5 - - D5 - - | C5 - - B4 - - | D5 - C5 - B4 - | E4 - - - - .' },
+        B: { chords: 'C D Em Em C D B Em', arp: [0, 1, 2, 1, 3, 1], arpV: 0.08, drum: 'T..x..', bass: 1, layers: 'str', melI: 'strings', melV: 0.1, mel: 'E5 - - G5 - - | F#5 - - A5 - - | G5 - F#5 E5 - B4 | E5 - - - - . | E5 - - G5 - E5 | F#5 - - D5 - . | D#5 - - F#5 - B4 | E5 - - - - .' },
+      },
     },
   };
-  for (const k in TRACKS) { const T = TRACKS[k]; T.ch = T.chords.split(/\s+/).filter(Boolean).map(chord); T.m = melody(T.mel); T.len = T.ch.length * T.bar; }
+  for (const k in TRACKS) {
+    const T = TRACKS[k]; T.seq = []; let st = 0;
+    for (const pn in T.parts) {
+      const P = T.parts[pn]; P.ch = P.chords.split(/\s+/).filter(Boolean).map(chord); P.ly = P.layers || '';
+      if (P.mel) { P.m = melody(P.mel); P.mm = new Map(P.m.ev.map(e => [e.step, e])); }
+      if (P.mel2) { const ev = P.mel2[0] === '@' ? P.m.ev.map(e => Object.assign({}, e, { m: e.m + Number(P.mel2.slice(1)) })) : melody(P.mel2).ev; P.mm2 = new Map(ev.map(e => [e.step, e])); }
+    }
+    T.order.split(/\s+/).forEach(pn => { const P = T.parts[pn], len = P.ch.length * T.bar; T.seq.push({ P, st, len }); st += len; });
+    T.len = st;
+  }
 
   const mus = { name: null, g: null, step: 0, next: 0, drone: [] };
   function playMusic(name) {
@@ -454,19 +507,81 @@ const SND = (() => {
   }
   function tick() {
     if (!ctx || !mus.name) return;
-    const T = TRACKS[mus.name];
+    const T = TRACKS[mus.name], G = mus.g;
     while (mus.next < ctx.currentTime + 0.15) {
-      const s = mus.step, t = mus.next, bi = Math.floor(s / T.bar), bs = s % T.bar, c = T.ch[bi];
+      const s = mus.step, t = mus.next, q = T.seq.find(x => s >= x.st && s < x.st + x.len), P = q.P, ls = s - q.st;
+      const bi = Math.floor(ls / T.bar), bs = ls % T.bar, c = P.ch[bi];
       const tones = [c.root, c.root + 7, c.root + 12, c.root + 12 + c.third];
-      INST.pluck(mus.g, tones[T.arp[bs]], t, T.arpV * (bs === 0 ? 1.15 : 1));
-      if (bs === 0) INST.bass(mus.g, c.root - 12, t, 0.16, T.sd * 3);
-      if (bs === 3) INST.bass(mus.g, c.root - 5, t, 0.12, T.sd * 3);
-      const dch = T.drum[bs];
-      if (dch === 'X') INST.drum(mus.g, t, 0.32); else if (dch === 'x') INST.drum(mus.g, t, 0.18); else if (dch === 't') INST.tamb(mus.g, t, 0.05);
-      if (T.bell && bs === 0 && bi % 2 === 0) INST.bell(mus.g, c.root + 24, t, 0.04);
-      const e = T.m.ev.find(x => x.step === s % T.m.len); if (e) INST.flute(mus.g, e.m, t, T.melV, e.len * T.sd + 0.05);
+      if (P.arp) INST[P.arpI || 'pluck'](G, tones[P.arp[bs]], t, P.arpV * (bs === 0 ? 1.15 : 1));
+      if (P.bass) { if (bs === 0) INST.bass(G, c.root - 12, t, 0.16, T.sd * 3); if (bs === 3) INST.bass(G, c.root - 5, t, 0.12, T.sd * 3); }
+      const dch = P.drum[bs];
+      if (dch === 'X') INST.drum(G, t, 0.32); else if (dch === 'x') INST.drum(G, t, 0.18); else if (dch === 't') INST.tamb(G, t, 0.05); else if (dch === 's') INST.snare(G, t, 0.06); else if (dch === 'T') INST.taiko(G, t, 0.28);
+      if (bs === 0) {
+        const bd = T.bar * T.sd + 0.1;
+        if (P.ly.includes('pad')) [c.root + 12, c.root + 12 + c.third, c.root + 19].forEach(m => INST.pad(G, m, t, 0.05, bd));
+        if (P.ly.includes('str')) [c.root + 12, c.root + 19, c.root + 24 + c.third].forEach(m => INST.strings(G, m, t, 0.032, bd));
+        if (P.ly.includes('choir') && bi % 2 === 0) [c.root + 12, c.root + 12 + c.third, c.root + 19].forEach(m => INST.choir(G, m, t, 0.045, bd * 2));
+        if (P.ly.includes('bell') && bi % 2 === 0) INST.bell(G, c.root + 24, t, 0.04);
+      }
+      const e = P.mm && P.mm.get(ls); if (e) INST[P.melI || 'flute'](G, e.m, t, P.melV, e.len * T.sd + 0.05);
+      const e2 = P.mm2 && P.mm2.get(ls); if (e2) INST[P.mel2I || 'flute'](G, e2.m, t, P.mel2V || 0.07, e2.len * T.sd + 0.05);
       mus.step = (s + 1) % T.len; mus.next += T.sd;
     }
+  }
+
+  // ---------- Coração da Forja: canção sincronizada com o minijogo da bigorna ----------
+  const FORGE_CH = { A: 'Dm Bb F C', B: 'Gm Dm Bb A', C: 'Dm Bb F C', F: 'Dm Dm' };
+  const MEL_B = [[0, 70, 2], [2, 69, 1], [3, 67, 1], [4, 69, 3], [7, 65, 1], [8, 70, 1], [9, 74, 1], [10, 72, 1], [11, 70, 1], [12, 69, 2], [14, 73, 2]];
+  const MEL_C = [[0, 62, 1.5], [1.5, 65, 0.5], [2, 69, 2], [4, 70, 1.5], [5.5, 69, 0.5], [6, 67, 2], [8, 69, 1], [9, 72, 1], [10, 77, 2], [12, 76, 1.5], [13.5, 74, 0.5], [14, 72, 2]];
+  function forge(o) {
+    if (!ctx) return null;
+    const out = ctx.createGain(), fev = ctx.createGain(), lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 16000; fev.gain.value = 0.0001;
+    out.gain.setValueAtTime(0.0001, ctx.currentTime); out.gain.linearRampToValueAtTime(1, o.t0 + 0.3);
+    out.connect(lp); fev.connect(lp); lp.connect(busM.in);
+    const b = o.beat, at = k => o.t0 + k * b, chs = [];
+    INST.swell(out, at(0), 4 * b, 0.05);
+    [50, 57, 62].forEach(m => INST.strings(out, m, at(0), 0.03, 4 * b));
+    INST.taiko(out, at(3), 0.3);
+    o.secs.forEach(sec => {
+      const ch = FORGE_CH[sec.k].split(' ').map(chord);
+      for (let i = 0; i < sec.nb; i++) {
+        const B = sec.b0 + i, t = at(B), bar = Math.floor(i / 4), bb = i % 4, c = ch[bar % ch.length];
+        chs[B] = c;
+        if (sec.k === 'F') continue;
+        if (bb === 0 || bb === 2) INST.taiko(out, t, bb === 0 ? 0.34 : 0.22);
+        if (bb === 1 || bb === 3) INST.drum(out, t, 0.12);
+        if (sec.k !== 'A') INST.tamb(out, t + b / 2, 0.04);
+        if (sec.k === 'C') { INST.snare(out, t + b / 2, 0.05); if (bb === 3 && bar % 2 === 1) for (let r = 0; r < 4; r++) INST.snare(out, t + r * b / 4, 0.04 + r * 0.015); }
+        INST.cello(out, c.root - 12, t, 0.09, b * 0.45); INST.cello(out, c.root - 12 + (bb === 3 ? 7 : 0), t + b / 2, 0.07, b * 0.4);
+        if (bb === 0) {
+          const bd = 4 * b + 0.05;
+          [c.root + 12, c.root + 12 + c.third, c.root + 19].forEach(m => INST.pad(out, m, t, 0.05, bd));
+          if (sec.k !== 'A') [c.root + 12, c.root + 19, c.root + 24 + c.third].forEach(m => INST.strings(out, m, t, sec.k === 'C' ? 0.04 : 0.03, bd));
+          if (sec.k === 'C') [c.root + 12, c.root + 12 + c.third, c.root + 19].forEach(m => INST.choir(out, m, t, 0.045, bd));
+          [c.root + 24, c.root + 24 + c.third, c.root + 31].forEach(m => INST.choir(fev, m, t, 0.04, bd));
+          INST.swell(fev, t + 2 * b, 2 * b, 0.03);
+          INST.snare(fev, t + 3.5 * b, 0.05);
+        }
+      }
+      const mel = sec.k === 'B' ? MEL_B : sec.k === 'C' ? MEL_C : null;
+      if (mel) for (let rep = 0; rep < sec.nb / 16; rep++) mel.forEach(([bo, m, d]) => INST.horn(out, m, at(sec.b0 + rep * 16 + bo), 0.1, d * b * 0.95));
+    });
+    const fin = o.secs.find(x => x.k === 'F');
+    if (fin) {
+      const t = at(fin.b0), dd = fin.nb * b + 1.6;
+      for (let r = 0; r < 16; r++) INST.taiko(out, t + r * b / 4, 0.06 + r * 0.014);
+      [50, 57, 62, 65, 69].forEach(m => { INST.strings(out, m, t, 0.035, dd); INST.choir(out, m + 12, t, 0.035, dd); });
+      INST.horn(out, 62, t, 0.1, 4 * b); INST.horn(out, 69, at(fin.b0 + 4), 0.12, 4 * b);
+      INST.taiko(out, at(fin.b0 + 4), 0.45); INST.bell(out, 74, at(fin.b0 + 4), 0.06);
+    }
+    const dm = chord('Dm');
+    return {
+      chord: tt => chs[Math.floor((tt - o.t0) / b + 0.01)] || dm,
+      fever(on) { fev.gain.setTargetAtTime(on ? 1 : 0.0001, ctx.currentTime, on ? 0.12 : 0.4); },
+      miss() { const n = ctx.currentTime; lp.frequency.cancelScheduledValues(n); lp.frequency.setValueAtTime(650, n); lp.frequency.exponentialRampToValueAtTime(16000, n + 0.9); },
+      stop() { const n = ctx.currentTime; out.gain.cancelScheduledValues(n); out.gain.setTargetAtTime(0.0001, n, 0.35); fev.gain.setTargetAtTime(0.0001, n, 0.35); setTimeout(() => { out.disconnect(); fev.disconnect(); lp.disconnect(); }, 3000); },
+    };
   }
 
   // ---------- efeitos ----------
@@ -514,6 +629,7 @@ const SND = (() => {
     },
     beat(t, strong) { INST.drum(S(), t, strong ? 0.3 : 0.15); },
     tick(t) { tone(S(), 'square', 1500, t, 0.03, 0.03, { lp: 3000 }); },
+    flip() { const t = now(); noise(S(), t, 0.14, 0.14, 'bandpass', 700, { f2: 3200, q: 2 }); tone(S(), 'triangle', 1250, t + 0.06, 0.18, 0.06); tone(S(), 'sine', 2500, t + 0.06, 0.1, 0.03); },
   };
   for (const k in fx) { const f = fx[k]; fx[k] = (...a) => { if (!ctx) return; try { f(...a); } catch (e) { } }; }
   // fogo crepitando (ambiente)
@@ -533,7 +649,7 @@ const SND = (() => {
     s.connect(f); f.connect(g); g.connect(S()); s.start();
     return { set(p) { g.gain.setTargetAtTime(0.18 * p, ctx.currentTime, 0.05); f.frequency.setTargetAtTime(1200 + p * 1800, ctx.currentTime, 0.05); }, stop() { g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); setTimeout(() => { try { s.stop(); } catch (e) { } }, 300); } };
   }
-  return { init, now, setVol, vol, setDuck, playMusic, stopMusic, fx, ambient, grind, get ready() { return !!ctx; }, get running() { return !!ctx && ctx.state === 'running'; } };
+  return { init, now, setVol, vol, setDuck, playMusic, stopMusic, fx, ambient, grind, forge, mf, get ready() { return !!ctx; }, get running() { return !!ctx && ctx.state === 'running'; } };
 })();
 
 'use strict';
@@ -1930,7 +2046,7 @@ const ACT_KEYS = ['Space', 'KeyE', 'Enter', 'NumpadEnter'];
 window.addEventListener('keydown', e => {
   SND.init();
   if (UI.keydown(e)) return;
-  if (mode === 'mini') { if (ACT_KEYS.includes(e.code)) { e.preventDefault(); if (!e.repeat) MINI.press(); } else if (e.code === 'Escape') MINI.quit(); return; }
+  if (mode === 'mini') { if (ACT_KEYS.includes(e.code)) { e.preventDefault(); if (!e.repeat) MINI.press(); } else if (['KeyF', 'KeyK', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { e.preventDefault(); if (!e.repeat) MINI.press2(); } else if (e.code === 'Escape') MINI.quit(); return; }
   if (mode !== 'play') return;
   keys[e.code] = true;
   if (ACT_KEYS.includes(e.code)) { e.preventDefault(); if (!e.repeat) interact(); }
@@ -1945,8 +2061,9 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; if (mode === 'mini' && ACT_KEYS.includes(e.code)) MINI.release(); });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (mode === 'mini') MINI.release(); });
-cv.addEventListener('mousedown', e => { SND.init(); if (mode === 'mini') { MINI.press(); return; } const [x, y] = toCanvas(e); clickWorld(x, y); });
-window.addEventListener('mouseup', () => { if (mode === 'mini') MINI.release(); });
+cv.addEventListener('contextmenu', e => { if (mode === 'mini') e.preventDefault(); });
+cv.addEventListener('mousedown', e => { SND.init(); if (mode === 'mini') { if (e.button === 2) MINI.press2(); else MINI.press(); return; } const [x, y] = toCanvas(e); clickWorld(x, y); });
+window.addEventListener('mouseup', e => { if (mode === 'mini' && e.button !== 2) MINI.release(); });
 cv.addEventListener('touchstart', e => { SND.init(); e.preventDefault(); if (mode === 'mini') { MINI.press(); return; } const [x, y] = toCanvas(e); clickWorld(x, y); }, { passive: false });
 cv.addEventListener('touchend', e => { e.preventDefault(); if (mode === 'mini') MINI.release(); }, { passive: false });
 window.addEventListener('resize', resize);
@@ -1963,7 +2080,7 @@ const MINI = (() => {
   const metal = () => MATS[(w && w.m) || 'ferro'];
   const HINT = {
     heat: 'Segure ESPAÇO (ou o clique) para soprar o fole. Mantenha o calor dentro da faixa dourada até a maturação encher.',
-    hammer: 'Ouça o Cântico e golpeie (ESPAÇO / clique) quando cada sílaba cruzar a linha da bigorna.',
+    hammer: 'ESPAÇO/clique: golpear · F/clique direito: virar a peça (losangos azuis) · segure nas notas longas · 8 acertos seguidos = Fúria da Forja.',
     quench: 'Mergulhe a peça (ESPAÇO / clique) quando a cor do metal chegar ao vermelho-cereja.',
     sharpen: 'Segure para pressionar a lâmina no rebolo. Mantenha o marcador dentro da faixa dourada.',
     finish: 'Golpeie quando o anel encontrar o círculo dourado.',
@@ -1979,13 +2096,15 @@ const MINI = (() => {
     if (s.done) return; s.done = true;
     setTimeout(() => {
       mode = 'play'; type = null; UI.miniHUD(null); SND.setDuck(1); if (s.grind) s.grind.stop();
+      if (s.forge) { s.forge.stop(); SND.playMusic('oficina'); }
       stepDone(s.step, score, extra);
-    }, 900);
+    }, s.forge ? 2200 : 900);
   }
 
   function quit() {
     if (s.done || type === 'finish' && s.phase !== 'assembly') return;
     s.done = true; if (s.grind) s.grind.stop();
+    if (s.forge) { s.forge.stop(); SND.playMusic('oficina'); }
     if (type === 'heat') S.mats.carvao++;
     mode = 'play'; type = null; UI.miniHUD(null); UI.closeAssembly(); SND.setDuck(1);
     UI.toast('Etapa interrompida. A peça aguarda; retome quando quiser.', 'relogio');
@@ -2048,7 +2167,7 @@ const MINI = (() => {
     }));
     blit(g, bellowsSpr[k], 8, 106);
   }
-  const INIT = {}, UPD = {}, DRAW = {}, PRESS = {}, REL = {};
+  const INIT = {}, UPD = {}, DRAW = {}, PRESS = {}, PRESS2 = {}, REL = {};
   INIT.heat = () => {
     s.step = 'heat';
     const M = metal(), c = (M.heat[0] + M.heat[1]) / 2, hw = (M.heat[1] - M.heat[0]) / 2 * (sk('c1') ? 1.3 : 1);
@@ -2095,18 +2214,32 @@ const MINI = (() => {
     bar(130, 226, 140, 6, s.prog, inZ ? PAL.gold[3] : PAL.fire[2]);
   };
 
-  // ================================================================== MARTELAR
+  // ================================================================== MARTELAR — O CORAÇÃO DA FORJA
+  // Martelo visto de perfil: o cabo sai da mão do ferreiro (pivô) e a cabeça desce com a face reta sobre a peça.
+  const HP = [338, 79], STRIKE = [222, 95];
   let hammerSpr = null;
   function hammerSprite() {
     if (hammerSpr) return hammerSpr;
-    hammerSpr = spr(190, 34, d => {
-      d.r(0, 14, 160, 6, PAL.wood[3]); d.r(0, 14, 160, 2, PAL.wood[5]); d.r(0, 19, 160, 1, PAL.wood[1]);
-      for (let x = 6; x < 150; x += 11) d.r(x, 16, 4, 1, PAL.wood[2]);
-      d.r(0, 12, 26, 10, PAL.leather[2]); for (let x = 2; x < 26; x += 4) d.vl(x, 12, 10, PAL.leather[1]);
-      d.r(156, 0, 30, 34, PAL.iron[3]); d.r(156, 0, 30, 4, PAL.iron[5]); d.r(156, 30, 30, 4, PAL.iron[1]); d.vl(156, 0, 34, PAL.iron[4]); d.vl(185, 0, 34, PAL.iron[2]);
-      d.r(152, 10, 4, 14, PAL.iron[2]); d.rivet(170, 16);
+    hammerSpr = spr(140, 40, d => {   // pivô em (130, 20) do sprite
+      d.r(20, 17, 112, 5, PAL.wood[3]); d.hl(20, 17, 112, PAL.wood[5]); d.hl(20, 21, 112, PAL.wood[1]);
+      for (let x = 30; x < 100; x += 9) d.p(x, 19, PAL.wood[2]);
+      d.r(102, 16, 28, 7, PAL.leather[2]); for (let x = 104; x < 130; x += 3) d.vl(x, 16, 7, PAL.leather[1]);
+      d.r(4, 4, 20, 28, PAL.iron[3]); d.vl(5, 4, 28, PAL.iron[5]); d.vl(6, 4, 28, PAL.iron[4]); d.vl(23, 4, 28, PAL.iron[1]);
+      d.r(3, 1, 22, 4, PAL.iron[4]); d.hl(3, 1, 22, PAL.iron[5]);
+      d.r(2, 31, 24, 5, PAL.iron[2]); d.hl(2, 31, 24, PAL.iron[4]); d.hl(2, 35, 24, PAL.iron[0]);
+      d.r(24, 15, 4, 10, PAL.iron[2]); d.rivet(14, 18);
     });
     return hammerSpr;
+  }
+  function drawHammer(th) {
+    g.save(); g.imageSmoothingEnabled = false; g.translate(HP[0], HP[1]); g.rotate(th); g.drawImage(hammerSprite(), -131, -21); g.restore();
+    // braço do ferreiro (manga + luva) segurando o cabo
+    g.save(); g.translate(HP[0], HP[1]); g.rotate(th * 0.3);
+    const d = new Pix(g);
+    d.poly([[-3, -9], [90, 10], [90, 46], [3, 10]], '#3a2a22'); d.poly([[-3, -9], [90, 10], [90, 18], [-2, -4]], '#5a4334');
+    d.ell(0, 0, 9, 9, PAL.leather[2]); d.ell(-1, -2, 7, 6, PAL.leather[3]);
+    for (let i = -5; i <= 5; i += 3) d.hl(-6, i, 3, PAL.leather[1]);
+    g.restore();
   }
   function anvilBG() {
     if (bgs.anvil) return bgs.anvil;
@@ -2119,94 +2252,184 @@ const MINI = (() => {
     }), 0, 0);
     x.drawImage(layer(d => {
       // tronco
-      d.r(124, 176, 152, 46, PAL.wood[2]); for (let xx = 128; xx < 274; xx += 7) d.vl(xx, 182, 40, PAL.wood[1]); d.vl(124, 176, 46, PAL.wood[3]); d.vl(125, 176, 46, PAL.wood[4]);
-      d.band(124, 200, 152, 6);
-      d.ell(200, 176, 76, 12, PAL.wood[4]); d.ell(200, 176, 60, 9, PAL.wood[5]); d.ell(200, 176, 42, 6, PAL.wood[4]); d.ell(200, 176, 20, 3, PAL.wood[5]);
-      // bigorna
+      d.r(134, 176, 144, 46, PAL.wood[2]); for (let xx = 138; xx < 276; xx += 7) d.vl(xx, 182, 40, PAL.wood[1]); d.vl(134, 176, 46, PAL.wood[3]); d.vl(135, 176, 46, PAL.wood[4]);
+      d.band(134, 200, 144, 6);
+      d.ell(206, 176, 72, 10, PAL.wood[4]); d.ell(206, 176, 56, 7, PAL.wood[5]); d.ell(206, 176, 38, 5, PAL.wood[4]); d.ell(206, 176, 16, 2, PAL.wood[5]);
+      // bigorna de perfil (padrão inglês): pés, cintura, corpo, face, degrau, chifre e calcanhar
       const I = has('bigorna') ? ['#1d2130', '#2f3648', '#4a5570', '#71809f', '#a3b3d2', '#e4ecff'] : ['#1a191f', '#2b2a33', '#45434f', '#66646f', '#8f8d99', '#cfcdd8'];
-      d.poly([[146, 176], [254, 176], [240, 160], [160, 160]], I[1]); d.hl(160, 160, 80, I[2]);
-      d.r(162, 144, 76, 18, I[2]); d.vl(162, 144, 18, I[3]); d.r(232, 144, 6, 18, I[1]);
-      d.poly([[176, 130], [224, 130], [216, 146], [184, 146]], I[2]); d.vl(184, 132, 12, I[3]);
-      d.poly([[112, 112], [48, 118], [56, 122], [112, 131]], I[2]); d.poly([[112, 112], [50, 118], [112, 116]], I[4]);
-      d.r(110, 108, 190, 6, I[4]); d.hl(110, 108, 190, I[5]); d.hl(150, 109, 90, I[5]);
-      d.r(110, 114, 190, 17, I[2]); d.hl(110, 114, 190, I[3]); d.hl(110, 130, 190, I[0]); d.r(296, 108, 18, 14, I[3]); d.hl(296, 108, 18, I[4]);
-      d.r(266, 110, 6, 2, I[0]); d.r(282, 110, 4, 3, I[0]);
-      if (!has('bigorna')) d.noise(110, 112, 190, 60, ['#6e3b22', '#8c5130', '#5a2f1c'], 0.025, 9);
+      d.poly([[154, 176], [258, 176], [246, 162], [166, 162]], I[1]); d.hl(166, 162, 80, I[2]);
+      d.r(154, 173, 22, 3, I[0]); d.r(236, 173, 22, 3, I[0]); d.r(180, 170, 52, 6, I[0]);
+      d.poly([[178, 163], [234, 163], [226, 138], [186, 138]], I[2]); d.vl(186, 139, 23, I[3]); d.vl(187, 141, 20, I[3]); d.vl(225, 139, 23, I[1]);
+      d.poly([[150, 115], [282, 115], [244, 140], [168, 140]], I[2]); d.hl(152, 116, 128, I[1]); d.line(168, 139, 152, 117, I[3]);
+      d.r(126, 108, 24, 12, I[2]); d.hl(126, 108, 24, I[4]); d.hl(126, 119, 24, I[1]); d.vl(149, 108, 7, I[1]);
+      d.poly([[127, 108], [127, 121], [108, 117], [90, 112], [78, 110], [90, 108], [108, 107]], I[3]);
+      d.line(80, 109, 126, 108, I[5]); d.line(90, 111, 126, 116, I[2]); d.line(100, 115, 126, 120, I[1]);
+      d.r(150, 102, 134, 14, I[3]); d.r(150, 102, 134, 3, I[4]); d.hl(150, 102, 134, I[5]); d.hl(150, 115, 134, I[1]); d.vl(150, 102, 14, I[4]);
+      d.poly([[284, 102], [294, 104], [294, 111], [284, 116]], I[2]); d.hl(284, 102, 9, I[4]);
+      d.r(262, 103, 6, 2, I[0]); d.r(274, 103, 3, 2, I[0]);
+      if (!has('bigorna')) d.noise(150, 104, 134, 34, ['#6e3b22', '#8c5130', '#5a2f1c'], 0.03, 9);
     }), 0, 0);
     bgs.anvil = c; return c;
   }
+  const SEC_NAME = { A: 'I - O PRIMEIRO CALOR', B: 'II - A VIRADA', C: 'III - O CORAÇÃO DA FORJA', F: 'O GOLPE FINAL' };
   INIT.hammer = () => {
     s.step = 'hammer';
-    const R = RECIPES[w.r], M = metal(), toks = R.pat.split(/\s+/).filter(Boolean), loops = R.loops || 1;
-    const bpm = R.bpm + (w.m ? M.bpm : 0), beat = 60 / bpm, half = beat / 2, t0 = clock() + 0.5, lead = 4 * beat;
-    s.notes = []; for (let l = 0; l < loops; l++) toks.forEach((k, i) => { if (k !== '.') s.notes.push({ t: t0 + lead + (l * toks.length + i) * half, syl: k, st: 0 }); });
+    const R = RECIPES[w.r], M = metal(), toks = R.pat.split(/\s+/).filter(Boolean), n = toks.length;
+    const bpm = R.bpm + (w.m ? M.bpm : 0), beat = 60 / bpm, half = beat / 2, t0 = clock() + 0.6, lead = 4 * beat;
+    const T = h => t0 + lead + h * half, kinds = (R.loops || 1) >= 2 ? ['A', 'B', 'C'] : ['A', 'B'];
+    s.notes = []; s.secs = [];
+    let hp = 0;
+    kinds.forEach(k => {
+      s.secs.push({ k, b0: 4 + hp / 2, nb: n, t: T(hp) });
+      let holdAte = -1;
+      for (let rep = 0; rep < 2; rep++) for (let i = 0; i < n; i++) {
+        const h = hp + rep * n + i, tk = toks[i];
+        if (h <= holdAte) continue;
+        if (tk !== '.') {
+          let rest = 0; while (rest < 3 && toks[i + 1 + rest] === '.') rest++;
+          if (k !== 'A' && rest >= 2 && /BUM|DON|FORJA|HA|TUM/.test(tk)) { s.notes.push({ t: T(h), t2: T(h + rest), syl: tk, kind: 'hold', st: 0 }); holdAte = h + rest; }
+          else s.notes.push({ t: T(h), syl: tk, kind: 'tap', st: 0 });
+        } else if (k !== 'A' && i % 4 === 3 && (k === 'C' || rep === 1)) s.notes.push({ t: T(h), syl: 'VIRA', kind: 'flip', st: 0 });
+        else if (k === 'C' && rep === 1 && i % 4 === 1) s.notes.push({ t: T(h), syl: 'TIC', kind: 'tap', st: 0 });
+      }
+      hp += 2 * n;
+    });
+    s.secs.push({ k: 'F', b0: 4 + hp / 2, nb: 8, t: T(hp) });
+    s.notes.push({ t: T(hp), t2: T(hp + 4), syl: 'FORJA', kind: 'hold', st: 0 });
+    s.notes.push({ t: T(hp + 6), syl: 'HA', kind: 'tap', st: 0 });
+    s.notes.push({ t: T(hp + 8), syl: 'BUM', kind: 'tap', st: 0 });
     const wm = (sk('m1') ? 1.15 : 1) * (has('bigorna') ? 1.2 : 1);
-    Object.assign(s, { t0, beat, lead, win: { p: 0.05 * (sk('m2') ? 1.4 : 1) * (has('bigorna') ? 1.15 : 1), g: 0.1 * wm, o: 0.15 * wm }, hit: 0, empty: 0, combo: 0, maxC: 0, sum: 0, strike: 0, endT: s.notes[s.notes.length - 1].t + 0.8 });
-    SND.setDuck(0.08);
+    Object.assign(s, { t0, beat, lead, win: { p: 0.05 * (sk('m2') ? 1.4 : 1) * (has('bigorna') ? 1.15 : 1), g: 0.1 * wm, o: 0.15 * wm }, hit: 0, empty: 0, combo: 0, maxC: 0, sum: 0, strike: 0, flipA: 0, side: 1, th: 0.5, fever: false, fevN: 0, endT: s.notes[s.notes.length - 1].t + 0.8 });
+    s.forge = null;
     if (useAudio) {
-      const nb = Math.ceil((s.endT - t0) / beat);
-      for (let b = 0; b < nb; b++) { const tt = t0 + b * beat; if (b < 4) SND.fx.tick(tt); else SND.fx.beat(tt, (b - 4) % 4 === 0); }
-      s.notes.forEach(n => SND.fx.voice(n.syl, n.t, 1));
+      SND.stopMusic(); SND.setDuck(1);
+      s.forge = SND.forge({ t0, beat, secs: s.secs });
+      for (let b = 0; b < 4; b++) SND.fx.tick(t0 + b * beat);
+      s.notes.forEach(nn => { if (nn.kind !== 'flip') SND.fx.voice(nn.syl, nn.t, SND.mf(s.forge.chord(nn.t).root) / 130); });
     }
   };
+  // a nota da bigorna segue o acorde da canção: os golpes "tocam" a melodia
+  function anvilPitch(n) {
+    if (!s.forge) return { PAH: 1, SHACK: 1.12, TUM: 0.9, TA: 1.2, CLAM: 1.05, TIC: 1.3, BUM: 0.8, HA: 1.1, DON: 0.85, FORJA: 1.25 }[n.syl] || 1;
+    const c = s.forge.chord(n.t), k = { TUM: 0, BUM: 0, DON: 0, PAH: 1, CLAM: 1, HA: 2, TA: 2, SHACK: 1, TIC: 3, FORJA: 3 }[n.syl] || 0;
+    return Math.pow(2, ([c.root + 24, c.root + 24 + c.third, c.root + 31, c.root + 36][k] - 81) / 12);
+  }
+  function combo(ok) {
+    if (ok) {
+      s.combo++; s.maxC = Math.max(s.maxC, s.combo);
+      if (s.combo >= 8 && !s.fever) { s.fever = true; if (s.forge) s.forge.fever(true); judge(200, 52, 'FÚRIA DA FORJA!', PAL.gold[5]); SND.fx.rare(1); }
+      if (s.fever) s.fevN++;
+    } else {
+      if (s.fever && s.forge) s.forge.fever(false);
+      s.combo = 0; s.fever = false; if (s.forge) s.forge.miss();
+    }
+  }
   function grade(n, d) {
     const a = Math.abs(d), W2 = s.win;
     let v, txt, col;
     if (a <= W2.p) { v = 1; txt = 'PERFEITO'; col = PAL.gold[5]; } else if (a <= W2.g) { v = 0.8; txt = 'BOM'; col = PAL.green[4]; } else { v = 0.5; txt = d < 0 ? 'CEDO' : 'TARDE'; col = PAL.parch[3]; }
-    n.st = 1; n.v = v; s.sum += v; s.hit++; s.combo++; s.maxC = Math.max(s.maxC, s.combo);
-    judge(70, 170, txt, col);
-    SND.fx.anvil(v, { PAH: 1, SHACK: 1.12, TUM: 0.9, TA: 1.2, CLAM: 1.05, TIC: 1.3, BUM: 0.8, HA: 1.1, DON: 0.85, FORJA: 1.25 }[n.syl] || 1);
-    spark(206, 104, 10 + v * 10); shake = 2 + v * 2;
+    n.v = v; s.hit++; combo(true);
+    if (n.kind === 'hold') { n.st = 2; txt = 'SEGURE!'; } else { n.st = 1; s.sum += v; }
+    judge(70, 158, txt, col);
+    if (n.kind === 'flip') { SND.fx.flip(); spark(STRIKE[0] - 30, STRIKE[1] + 4, 6); }
+    else { SND.fx.anvil(v, anvilPitch(n)); spark(STRIKE[0], STRIKE[1], 10 + v * 12 + (s.fever ? 16 : 0), s.fever ? PAL.gold[5] : undefined); shake = 2 + v * 2 + (s.fever ? 1.5 : 0); }
   }
-  PRESS.hammer = () => {
+  function strike(kind) {
     if (s.done) return;
     const now = clock() - SET.offset / 1000;
-    s.strike = 0.12;
-    let best = null, bd = 9; s.notes.forEach(n => { if (n.st) return; const d = now - n.t; if (Math.abs(d) < Math.abs(bd)) { bd = d; best = n; } });
+    if (kind === 'flip') { s.flipA = 0.3; s.side = -s.side; } else { s.held = true; s.strike = 0.11; }
+    let best = null, bd = 9;
+    s.notes.forEach(n => { if (n.st !== 0 || (n.kind === 'flip') !== (kind === 'flip')) return; const dd = now - n.t; if (Math.abs(dd) < Math.abs(bd)) { bd = dd; best = n; } });
     if (best && Math.abs(bd) <= s.win.o) grade(best, bd);
-    else { s.empty++; s.combo = 0; SND.fx.thud(); judge(70, 170, 'FORA', PAL.red[4]); }
-  };
+    else { s.empty++; combo(false); SND.fx.thud(); judge(70, 158, kind === 'flip' ? 'VIROU À TOA' : 'FORA', PAL.red[4]); }
+  }
+  PRESS.hammer = () => strike('tap');
+  PRESS2.hammer = () => strike('flip');
   UPD.hammer = dt => {
     if (s.done) return;
     const now = clock() - SET.offset / 1000;
-    s.strike = Math.max(0, s.strike - dt);
-    s.notes.forEach(n => { if (!n.st && now - n.t > s.win.o) { n.st = -1; n.v = 0; s.combo = 0; judge(70, 170, 'ERROU', PAL.red[4]); } });
-    if (now > s.endT) {
-      const N = s.notes.length, sc = clamp(s.sum / N - s.empty * 0.03, 0, 1);
+    s.strike = Math.max(0, s.strike - dt); s.flipA = Math.max(0, s.flipA - dt);
+    let segurando = false;
+    s.notes.forEach(n => {
+      if (n.st === 0 && now - n.t > s.win.o) { n.st = -1; n.v = 0; combo(false); judge(70, 158, 'ERROU', PAL.red[4]); }
+      if (n.st === 2) {
+        if (now >= n.t2) { n.st = 1; s.sum += n.v; judge(70, 158, 'SUSTENTADO!', PAL.gold[5]); spark(STRIKE[0], STRIKE[1], 30, PAL.gold[5]); SND.fx.anvil(1, anvilPitch(n) * 2); shake = 4; }
+        else if (!s.held) { n.st = 1; n.v *= 0.5; s.sum += n.v; combo(false); judge(70, 158, 'SOLTOU CEDO', PAL.parch[3]); }
+        else { segurando = true; if (rand() < 0.7) spark(STRIKE[0] + (rand() - 0.5) * 16, STRIKE[1] + 2, 1); }
+      }
+    });
+    const nx = s.notes.find(n => n.st === 0 && n.kind !== 'flip'), tn = nx ? nx.t - now : 9;
+    const alvo = segurando ? 0.02 : tn < s.beat * 1.1 ? 0.25 : 0.12;
+    s.th += (alvo - s.th) * Math.min(1, dt * (alvo > s.th ? 7 : 30));
+    if (s.strike > 0) s.th = 0;
+    if (now > s.endT && !segurando) {
+      const N = s.notes.length, sc = clamp(s.sum / N - s.empty * 0.03 + Math.min(0.06, s.fevN * 0.004), 0, 1);
       judge(200, 60, sc >= 0.9 ? 'CÂNTICO PERFEITO!' : sc >= 0.7 ? 'BOM RITMO' : sc >= 0.25 ? 'RITMO IRREGULAR' : 'O METAL TRINCOU', sc >= 0.7 ? PAL.gold[4] : sc >= 0.25 ? PAL.parch[4] : PAL.red[4]);
+      if (s.forge) s.forge.fever(false);
       end(sc, { combo: s.maxC / N });
     }
   };
+  function drawPiece(done, now) {
+    const heat = clamp(0.78 - done * 0.3 + (s.fever ? 0.08 : 0), 0, 1);
+    const bw = Math.round(54 + done * 40), bh = Math.round(8 - done * 3), x0 = STRIKE[0] - Math.round(bw * 0.62), top = 102 - bh;
+    const k = s.flipA > 0 ? Math.abs(Math.cos(Math.PI * (1 - s.flipA / 0.3))) : 1, hh = Math.max(1, Math.round(bh * k)), y = 102 - hh;
+    // tenaz segurando a ponta esquerda
+    const pd = new Pix(g);
+    for (let k2 = 0; k2 < 3; k2++) { pd.line(150 + k2, 18, x0 + 2 + k2, y - 1, k2 === 0 ? PAL.iron[4] : PAL.iron[2]); pd.line(158 + k2, 18, x0 + 6 + k2, y + hh, k2 === 2 ? PAL.iron[0] : PAL.iron[1]); }
+    pd.r(x0 - 2, y - 2, 7, hh + 4, PAL.iron[2]); pd.hl(x0 - 2, y - 2, 7, PAL.iron[4]);
+    g.fillStyle = PAL.ink; g.fillRect(x0 - 1, y - 1, bw + 2, hh + 2);
+    g.fillStyle = heatColor(heat); g.fillRect(x0, y, bw, hh);
+    g.fillStyle = 'rgba(255,255,255,' + (0.25 + (s.fever ? 0.2 : 0)) + ')'; g.fillRect(x0, y, bw, 1);
+    // ponta afinando conforme a peça toma forma
+    g.fillStyle = heatColor(heat); for (let i = 1; i <= Math.round(done * 8); i++) g.fillRect(x0 + bw - 1 + i, y + Math.min(hh - 1, Math.floor(i * hh / 9)), 1, Math.max(1, hh - Math.floor(i * hh / 9) * 2));
+    // marcas dos golpes
+    g.fillStyle = 'rgba(80,20,0,0.35)'; for (let i = 0; i < Math.round(done * 10); i++) g.fillRect(x0 + 6 + ((i * 37) % (bw - 10)), y + (s.side > 0 ? 0 : hh - 1), 2, 1);
+    return top;
+  }
   DRAW.hammer = t => {
     const now = clock() - SET.offset / 1000;
     g.drawImage(anvilBG(), 0, 0);
-    const done = s.notes.filter(n => n.st).length / s.notes.length, heat = 0.7 - done * 0.25;
-    const bw = 60 + done * 34, bh = Math.round(8 - done * 3);
-    g.fillStyle = PAL.ink; g.fillRect(Math.round(205 - bw / 2) - 1, 109 - bh - 1, Math.round(bw) + 2, bh + 2); g.fillStyle = heatColor(heat); g.fillRect(Math.round(205 - bw / 2), 109 - bh, Math.round(bw), bh); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(Math.round(205 - bw / 2), 109 - bh, Math.round(bw), 1);
-    // martelo com antecipação
-    const nx = s.notes.find(n => !n.st), tn = nx ? nx.t - now : 1;
-    let up = clamp(1 - tn / (s.beat * 0.9), 0, 1); if (tn < 0) up = 1;
-    let a = 155.6 + (1 - (s.strike > 0 ? 0 : up)) * 4 + (s.strike > 0 ? 0 : up * 18);
-    if (s.strike > 0) a = 155.6;
-    g.save(); g.imageSmoothingEnabled = false; g.translate(360, 30); g.rotate(a * Math.PI / 180); g.drawImage(hammerSprite(), -10, -18); g.restore();
-    const gl = g.createRadialGradient(205, 105, 4, 205, 105, 60); gl.addColorStop(0, 'rgba(255,140,40,0.28)'); gl.addColorStop(1, 'rgba(255,140,40,0)'); g.globalCompositeOperation = 'lighter'; g.fillStyle = gl; g.fillRect(140, 50, 130, 110); g.globalCompositeOperation = 'source-over';
+    const done = s.notes.filter(n => n.st === 1 || n.st === -1).length / s.notes.length;
+    drawPiece(done, now);
+    drawHammer(s.th);
+    const gl = g.createRadialGradient(STRIKE[0], 100, 4, STRIKE[0], 100, s.fever ? 90 : 60);
+    gl.addColorStop(0, s.fever ? 'rgba(255,190,80,0.4)' : 'rgba(255,140,40,0.28)'); gl.addColorStop(1, 'rgba(255,140,40,0)');
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = gl; g.fillRect(100, 10, 250, 170); g.globalCompositeOperation = 'source-over';
     drawParts();
     vignette();
-    // trilha rítmica
-    frame(8, 192, 384, 40);
-    g.fillStyle = '#1c120d'; g.fillRect(8, 210, 384, 2);
+    if (s.fever) { g.globalAlpha = 0.1 + 0.06 * Math.sin(t * 9); g.fillStyle = PAL.fire[4]; g.fillRect(0, 0, W, 4); g.fillRect(0, H - 4, W, 4); g.fillRect(0, 0, 4, H); g.fillRect(W - 4, 0, 4, H); g.globalAlpha = 1; }
+    // trilha rítmica: faixa de GOLPE (cima) e de VIRAR (baixo)
+    frame(8, 182, 384, 52);
+    g.fillStyle = s.fever ? '#3a200c' : '#1c120d'; g.fillRect(8, 207, 384, 1);
     const sp = 150, hx = 64;
-    for (let b = 0; b < 64; b++) { const bt = s.t0 + b * s.beat, x = hx + (bt - now) * sp; if (x > 8 && x < 392) { g.fillStyle = (b - 4) % 4 === 0 ? '#4a3420' : '#2c1e14'; g.fillRect(Math.round(x), 194, 1, 36); } }
-    g.fillStyle = PAL.gold[3]; g.fillRect(hx - 1, 192, 3, 40); g.fillStyle = PAL.gold[5]; g.fillRect(hx, 192, 1, 40);
+    for (let b = 0; b < 200; b++) { const bt = s.t0 + b * s.beat, x = hx + (bt - now) * sp; if (x > 8 && x < 392) { g.fillStyle = (b - 4) % 4 === 0 ? '#4a3420' : '#2c1e14'; g.fillRect(Math.round(x), 184, 1, 48); } }
+    drawText(g, 'GOLPE', 14, 190, PAL.parch[2]); drawText(g, 'VIRAR', 14, 216, '#6fa8d0');
+    g.fillStyle = s.fever ? PAL.gold[5] : PAL.gold[3]; g.fillRect(hx - 1, 182, 3, 52); g.fillStyle = PAL.gold[5]; g.fillRect(hx, 182, 1, 52);
     s.notes.forEach(n => {
-      const x = Math.round(hx + (n.t - now) * sp); if (x < -20 || x > 410) return;
-      const col = n.st === 1 ? PAL.green[3] : n.st === -1 ? PAL.red[2] : heatColor(0.66);
-      g.fillStyle = PAL.ink; g.fillRect(x - 6, 209, 13, 9); g.fillStyle = col; g.fillRect(x - 5, 210, 11, 7); g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(x - 4, 210, 9, 1);
-      if (!n.st) drawText(g, n.syl, x, 197, PAL.parch[4], 'center');
+      const x = Math.round(hx + (n.t - now) * sp);
+      if (n.kind === 'hold') {
+        const x2 = Math.round(hx + (n.t2 - now) * sp); if (x2 < -20 || x > 410) return;
+        const xa = Math.max(n.st === 2 ? hx : -20, x);
+        g.fillStyle = PAL.ink; g.fillRect(xa - 1, 194, x2 - xa + 2, 9); g.fillStyle = n.st === -1 ? PAL.red[2] : n.st === 2 ? PAL.gold[5] : PAL.gold[3]; g.fillRect(xa, 195, x2 - xa, 7);
+        g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(xa, 195, x2 - xa, 1);
+      }
+      if (x < -20 || x > 410) return;
+      if (n.kind === 'flip') {
+        const col = n.st === 1 ? PAL.green[3] : n.st === -1 ? PAL.red[2] : '#6fb6e8';
+        g.fillStyle = PAL.ink; for (let i = -6; i <= 6; i++) g.fillRect(x - (6 - Math.abs(i)), 222 + i, (6 - Math.abs(i)) * 2 + 1, 1);
+        g.fillStyle = col; for (let i = -5; i <= 5; i++) g.fillRect(x - (5 - Math.abs(i)), 222 + i, (5 - Math.abs(i)) * 2 + 1, 1);
+        g.fillStyle = '#e8f6ff'; g.fillRect(x - 2, 220, 5, 1);
+      } else if (n.kind === 'tap' || n.st !== 2) {
+        const col = n.st === 1 ? PAL.green[3] : n.st === -1 ? PAL.red[2] : heatColor(0.66);
+        g.fillStyle = PAL.ink; g.fillRect(x - 6, 193, 13, 11); g.fillStyle = col; g.fillRect(x - 5, 194, 11, 9); g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(x - 4, 194, 9, 1);
+      }
+      if (!n.st && n.kind !== 'flip' && x > hx + 6) drawText(g, n.syl, x, 186, PAL.parch[4], 'center');
     });
-    // contagem
-    if (now < s.t0 + s.lead) { const k = Math.floor((now - s.t0) / s.beat); drawText(g, k < 0 ? 'PREPARE-SE' : k < 3 ? String(3 - k) : 'CANTE!', 200, 40, PAL.gold[4], 'center'); }
-    if (s.combo > 2) drawText(g, 'SEQUÊNCIA ' + s.combo, 330, 180, PAL.gold[4], 'center');
+    // contagem, seção, sequência
+    if (now < s.t0 + s.lead) { const k = Math.floor((now - s.t0) / s.beat); drawText(g, k < 0 ? 'PREPARE-SE' : k < 3 ? String(3 - k) : 'CANTE!', 312, 162, PAL.gold[4], 'center'); }
+    const sec = s.secs.slice().reverse().find(x => now >= x.t - 0.2);
+    if (sec && now - sec.t < 2.2) { g.globalAlpha = clamp(1.6 - (now - sec.t) * 0.7, 0, 1); drawText(g, SEC_NAME[sec.k], 312, 150, PAL.gold[5], 'center'); g.globalAlpha = 1; }
+    if (s.combo > 2) drawText(g, (s.fever ? 'FÚRIA X' : 'SEQUÊNCIA ') + s.combo, 312, 174, s.fever ? PAL.gold[5] : PAL.gold[4], 'center');
     drawFloats();
   };
 
@@ -2412,6 +2635,7 @@ const MINI = (() => {
   return {
     start, quit, get type() { return type; }, get st() { return s; }, clock,
     press() { SND.init(); if (PRESS[type]) PRESS[type](); },
+    press2() { SND.init(); if (PRESS2[type]) PRESS2[type](); else if (PRESS[type]) PRESS[type](); },
     release() { s.held = false; if (REL[type]) REL[type](); },
     update(dt) { s.t += dt; if (UPD[type]) UPD[type](dt); },
     draw(gg, t) { g.fillStyle = '#000'; g.fillRect(0, 0, W, H); if (DRAW[type]) DRAW[type](t); },
@@ -2886,7 +3110,7 @@ const UI = (() => {
     document.querySelectorAll('#hud-btns button').forEach(b => b.onclick = () => { SND.init(); const p = b.dataset.p; p === 'receitas' ? recipeBook() : panel(p, b.dataset.t); });
     document.querySelectorAll('#hud-btns button').forEach(b => { b.innerHTML = ico(b.dataset.i, 'ferro', 26) + `<span>${b.dataset.l}</span>`; });
     document.querySelectorAll('#pad [data-d]').forEach(b => {
-      const d = b.dataset.d, on = e => { e.preventDefault(); pad[d] = 1; }, off = e => { e.preventDefault(); pad[d] = 0; };
+      const d = b.dataset.d, on = e => { e.preventDefault(); pad[d] = 1; if (mode === 'mini') MINI.press2(); }, off = e => { e.preventDefault(); pad[d] = 0; };
       b.addEventListener('touchstart', on, { passive: false }); b.addEventListener('touchend', off, { passive: false }); b.addEventListener('touchcancel', off);
     });
     $('pad-act').addEventListener('touchstart', e => { e.preventDefault(); SND.init(); if (mode === 'mini') MINI.press(); else if (!blocking()) interact(); }, { passive: false });

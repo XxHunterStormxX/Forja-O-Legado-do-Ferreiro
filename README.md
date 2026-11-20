@@ -13,3 +13,4 @@ Cada versão fica em `Development Notes/BETA 0.N/`, com um README do que mudou. 
 | Versão | O que mudou |
 |---|---|
 | [BETA 0.1](Development%20Notes/BETA%200.1/) | Primeira versão jogável. |
+| [BETA 0.2](Development%20Notes/BETA%200.2/) | Coração da Forja refeito: bigorna, martelo, minijogo e músicas. |
